@@ -1,14 +1,345 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>My Computer Vision Blog</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sahar Banisafar - Technical Notes</title>
+    <link rel="stylesheet" href="/style.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.8;
+            color: #1a1a1a;
+            background: #ffffff;
+            font-size: 16px;
+        }
+
+        header {
+            border-bottom: 1px solid #e5e5e5;
+            padding: 2rem 0 1rem;
+            background: #ffffff;
+        }
+
+        .header-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .profile-section {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .profile-photo {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2.5rem;
+        }
+
+        .profile-info h1 {
+            font-size: 2rem;
+            font-weight: 400;
+            margin-bottom: 0.5rem;
+            color: #1a1a1a;
+        }
+
+        .profile-info p {
+            font-size: 1rem;
+            color: #666;
+            margin-bottom: 1rem;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .social-links a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            transition: opacity 0.2s;
+            font-weight: bold;
+        }
+
+        .social-links a:hover {
+            opacity: 0.8;
+        }
+
+        nav {
+            display: flex;
+            gap: 2.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        nav a {
+            color: #666;
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: color 0.2s;
+        }
+
+        nav a:hover {
+            color: #1a1a1a;
+        }
+
+        .intro {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 3rem 2rem 2rem;
+        }
+
+        .intro h2 {
+            font-size: 1.5rem;
+            font-weight: 400;
+            margin-bottom: 1rem;
+            color: #1a1a1a;
+        }
+
+        .intro p {
+            font-size: 1rem;
+            color: #666;
+            line-height: 1.6;
+            max-width: 700px;
+        }
+
+        main {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 2rem 6rem;
+        }
+
+        .post-list {
+            list-style: none;
+        }
+
+        .post-item {
+            padding: 2.5rem 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .post-item:last-child {
+            border-bottom: none;
+        }
+
+        .post-title {
+            font-size: 1.5rem;
+            font-weight: 400;
+            margin-bottom: 0.75rem;
+            color: #1a1a1a;
+            text-decoration: none;
+            display: block;
+            transition: color 0.2s;
+        }
+
+        .post-title:hover {
+            color: #667eea;
+        }
+
+        .post-excerpt {
+            color: #666;
+            line-height: 1.7;
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+        }
+
+        .post-meta {
+            display: flex;
+            gap: 1.5rem;
+            font-size: 0.875rem;
+            color: #999;
+        }
+
+        .post-meta span {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tag {
+            background: #e0e7ff;
+            color: #667eea;
+            padding: 0.25rem 0.75rem;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            letter-spacing: 0.3px;
+        }
+
+        footer {
+            border-top: 1px solid #e5e5e5;
+            padding: 2rem 0;
+            text-align: center;
+            color: #999;
+            font-size: 0.875rem;
+        }
+
+        footer a {
+            color: #999;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            color: #667eea;
+        }
+
+        @media (max-width: 768px) {
+            .profile-section {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .profile-info h1 {
+                font-size: 1.75rem;
+            }
+
+            .intro h2 {
+                font-size: 1.25rem;
+            }
+
+            nav {
+                flex-wrap: wrap;
+                gap: 1.5rem;
+            }
+
+            .post-title {
+                font-size: 1.25rem;
+            }
+
+            .post-meta {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
+    </style>
 </head>
 <body>
-  <h1>Welcome to My Website</h1>
-  <p>Exploring Computer Vision and AI.</p>
-  <h2>Articles</h2>
-  <ul>
-    <li><a href="article.html">My Article Title</a></li>
-  </ul>
+    <header>
+        <div class="header-container">
+            <div class="profile-section">
+                <div class="profile-photo">👤</div>
+                <div class="profile-info">
+                    <h1>Sahar Banisafar</h1>
+                    <p>Data Scientist & Technical Writer</p>
+                    <div class="social-links">
+                        <a href="https://github.com/banisafar" title="GitHub" target="_blank">GH</a>
+                        <a href="https://linkedin.com/in/banisafar" title="LinkedIn" target="_blank">in</a>
+                    </div>
+                </div>
+            </div>
+            <nav>
+                <a href="#posts">Posts</a>
+                <a href="#archive">Archive</a>
+                <a href="#about">About</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="intro">
+        <h2>Welcome Learning Notes on Artifical Intelligence</h2>
+        <p>Articles, projects, and notes on AI and computer vision  Documenting explorations in machine learning, deep learning and mathematics. I write to clarify my understanding and share insights with the community.</p>
+    </div>
+
+    <main>
+        <ul class="post-list">
+            <li class="post-item">
+                <a href="#" class="post-title">Understanding Distributed Consensus Algorithms</a>
+                <p class="post-excerpt">A deep dive into how distributed systems achieve consensus, exploring Raft and Paxos algorithms. We examine the trade-offs between consistency and availability, and discuss practical implementation considerations for building resilient distributed applications.</p>
+                <div class="post-meta">
+                    <span class="tag">Distributed Systems</span>
+                    <span>December 15, 2025</span>
+                    <span>12 min read</span>
+                </div>
+            </li>
+
+            <li class="post-item">
+                <a href="#" class="post-title">The Architecture of Modern ML Training Pipelines</a>
+                <p class="post-excerpt">Exploring the infrastructure required to train large-scale machine learning models, from data preprocessing and distributed training strategies to model serving and monitoring. Includes practical patterns for building reproducible training workflows.</p>
+                <div class="post-meta">
+                    <span class="tag">Machine Learning</span>
+                    <span>December 10, 2025</span>
+                    <span>18 min read</span>
+                </div>
+            </li>
+
+            <li class="post-item">
+                <a href="#" class="post-title">Zero-Downtime Database Migrations at Scale</a>
+                <p class="post-excerpt">Techniques and strategies for performing schema changes on production databases without service interruption. Covering backwards-compatible migrations, gradual rollouts, and handling edge cases when migrating large datasets.</p>
+                <div class="post-meta">
+                    <span class="tag">Database</span>
+                    <span>December 5, 2025</span>
+                    <span>10 min read</span>
+                </div>
+            </li>
+
+            <li class="post-item">
+                <a href="#" class="post-title">Building Observable Systems with OpenTelemetry</a>
+                <p class="post-excerpt">A practical guide to implementing comprehensive observability in microservices architectures using OpenTelemetry. Learn how to instrument your code for traces, metrics, and logs to gain deep insights into system behavior.</p>
+                <div class="post-meta">
+                    <span class="tag">Observability</span>
+                    <span>November 28, 2025</span>
+                    <span>15 min read</span>
+                </div>
+            </li>
+
+            <li class="post-item">
+                <a href="#" class="post-title">Optimizing React Performance for Large Applications</a>
+                <p class="post-excerpt">Performance optimization strategies for complex React applications, including code splitting, memoization patterns, virtual scrolling, and efficient state management. Real-world examples from scaling production applications.</p>
+                <div class="post-meta">
+                    <span class="tag">Frontend</span>
+                    <span>November 22, 2025</span>
+                    <span>14 min read</span>
+                </div>
+            </li>
+
+            <li class="post-item">
+                <a href="#" class="post-title">Container Security Best Practices</a>
+                <p class="post-excerpt">Comprehensive security considerations when building and deploying containerized applications. Topics include image scanning, runtime security, secrets management, network policies, and supply chain security for Kubernetes deployments.</p>
+                <div class="post-meta">
+                    <span class="tag">Security</span>
+                    <span>November 15, 2025</span>
+                    <span>16 min read</span>
+                </div>
+            </li>
+
+            <li class="post-item">
+                <a href="#" class="post-title">API Design Patterns for Distributed Systems</a>
+                <p class="post-excerpt">Exploring design patterns and best practices for building robust APIs in distributed environments. Covers versioning strategies, idempotency, pagination, error handling, and rate limiting with practical implementation examples.</p>
+                <div class="post-meta">
+                    <span class="tag">API Design</span>
+                    <span>November 8, 2025</span>
+                    <span>13 min read</span>
+                </div>
+            </li>
+
+
+        </ul>
+    </main>
+
+    <footer>
+        <p>© 2025 Your Name. Built with curiosity for engineers.</p>
+    </footer>
 </body>
 </html>
