@@ -16,7 +16,11 @@ header {
     border-bottom: 1px solid #e5e5e5;
     padding: 2rem 0 1rem;
     background: #ffffff;
+    text-align: center;
+    position: relative;
 }
+
+
 
 .header-container {
     max-width: 900px;
@@ -30,13 +34,37 @@ header {
     gap: 2rem;
     margin-bottom: 1.5rem;
 }
+
+.profile-section {
+    justify-content: center;
+    text-align: center;
+}
+
+
+
+/* Center the intro/welcome section */
+.intro {
+    text-align: center;
+}
+
+.intro h2 {
+    text-align: center;
+}
+
+.intro p {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+
 .iico {
     width: 35px;
     height: 35px;
 }
+
 .profile-photo {
-    width: 120px;
-    height: 120px;
+    width: 150px;
+    height: 150px;
     border-radius: 50%;
     background: #f5f5f5;
     flex-shrink: 0;
@@ -45,6 +73,13 @@ header {
     justify-content: center;
     color: #999;
     font-size: 2.5rem;
+    border: 1px solid #e5e5e5;
+}
+.profile-photo {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    object-fit: cover;  /* Add this */
     border: 1px solid #e5e5e5;
 }
 
@@ -86,10 +121,13 @@ header {
 }
 
 nav {
+    position: absolute;  /* ADD THIS */
+    top: 2rem;          /* ADD THIS */
+    right: 17%;        /* ADD THIS */
     display: flex;
-    gap: 2.5rem;
-    padding-top: 1rem;
-    border-top: 1px solid #f0f0f0;
+    gap: 2rem;     /*try 2.5*/
+    /*padding-top: 1rem;*/
+    /*border-top: 1px solid #f0f0f0;*/
 }
 
 nav a {
@@ -217,8 +255,11 @@ footer a:hover {
     }
 
     nav {
+        position: static;     /* ADD THIS - removes absolute positioning on mobile */
+        justify-content: center;  /* ADD THIS - centers nav on mobile */
         flex-wrap: wrap;
         gap: 1.5rem;
+        margin-top: 1rem;    /* ADD THIS - gives space below profile */
     }
 
     .post-title {
