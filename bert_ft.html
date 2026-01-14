@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fine-Tuning DistilBERT for Text Classification - Sahar Banisafar</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <style>
+        /* Article-specific styles */
+        article {
+            max-width: 750px;
+            margin: 0 auto;
+            padding: 3rem 2rem 6rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid #e5e5e5;
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            font-weight: 400;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: #1a1a1a;
+        }
+
+        .article-meta {
+            display: flex;
+            gap: 1.5rem;
+            font-size: 0.9rem;
+            color: #666;
+            flex-wrap: wrap;
+        }
+
+        .article-content {
+            font-size: 1.05rem;
+            line-height: 1.8;
+            color: #333;
+        }
+
+        .article-content h2 {
+            font-size: 1.75rem;
+            font-weight: 500;
+            margin: 3rem 0 1.5rem;
+            color: #1a1a1a;
+        }
+
+        .article-content h3 {
+            font-size: 1.35rem;
+            font-weight: 500;
+            margin: 2.5rem 0 1rem;
+            color: #1a1a1a;
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul, .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content code {
+            background: #f5f5f5;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9em;
+            color: #d63384;
+        }
+
+        .article-content pre {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 2rem 0;
+            border: 1px solid #e5e5e5;
+        }
+
+        .article-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+            font-size: 0.9rem;
+        }
+
+        .back-link {
+            display: inline-block;
+            color: #667eea;
+            text-decoration: none;
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .note {
+            background: #f0f7ff;
+            border-left: 4px solid #667eea;
+            padding: 1rem 1.5rem;
+            margin: 2rem 0;
+            border-radius: 3px;
+        }
+
+        .github-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: #1a1a1a;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 5px;
+            text-decoration: none;
+            margin: 2rem 0;
+            transition: background 0.2s;
+        }
+
+        .github-link:hover {
+            background: #333;
+        }
+
+        @media (max-width: 768px) {
+            .article-title {
+                font-size: 1.75rem;
+            }
+
+            .article-content h2 {
+                font-size: 1.5rem;
+            }
+
+            .article-content h3 {
+                font-size: 1.25rem;
+            }
+
+            article {
+                padding: 2rem 1.5rem 4rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="simple-header">
+            <a href="index.html" class="site-name">Sahar Banisafar</a>
+            <nav>
+                <a href="index.html">Home</a>
+                <a href="index.html#about">About</a>
+                <a href="index.html#cv">CV</a>
+            </nav>
+        </div>
+    </header>
+
+    <article>
+        <a href="index.html" class="back-link">← Back to all posts</a>
+
+        <div class="article-header">
+            <h1 class="article-title">Fine-Tuning DistilBERT for Text Classification: A Complete Implementation</h1>
+            <div class="article-meta">
+                <span class="tag">NLP</span>
+                <span>January 2026</span>
+                <span>15 min read</span>
+            </div>
+        </div>
+
+        <div class="article-content">
+            <p>
+                Fine-tuning pretrained language models has become the standard approach for NLP tasks, but the gap between "load a model" and "production-ready classifier" involves many practical decisions. In this guide, I walk through fine-tuning DistilBERT for text classification, covering the full pipeline: dataset preparation, handling class imbalance with weighted loss functions, implementing custom data collators for efficient batching, and building training loops with proper evaluation. We'll use PyTorch and HuggingFace Transformers throughout, with all code available on GitHub.
+            </p>
+
+            <a href="https://github.com/banisafar/distilbert-classification" class="github-link">
+                📦 View Full Code on GitHub
+            </a>
+
+            <h2>Understanding DistilBERT</h2>
+            
+            <p>
+                DistilBERT is a distilled version of BERT-base, designed to be smaller and faster while retaining 97% of BERT's performance. The key specifications:
+            </p>
+
+            <ul>
+                <li><strong>Embedding dimension:</strong> 768</li>
+                <li><strong>Vocabulary size:</strong> 30,522 tokens</li>
+                <li><strong>Layers:</strong> 6 (compared to BERT's 12)</li>
+                <li><strong>Parameters:</strong> ~66 million (compared to BERT's 110 million)</li>
+            </ul>
+
+            <p>
+                This makes DistilBERT an excellent choice for classification tasks where you need a balance between performance and computational efficiency. The reduced size means faster training and inference without significant accuracy loss.
+            </p>
+
+            <h2>Project Overview</h2>
+
+            <p>
+                Our implementation covers the following components:
+            </p>
+
+            <ol>
+                <li>Loading and preparing a text classification dataset</li>
+                <li>Tokenizing text with proper padding and truncation</li>
+                <li>Handling class imbalance with weighted loss functions</li>
+                <li>Creating custom DataLoaders with efficient batching</li>
+                <li>Fine-tuning the model with a proper training loop</li>
+                <li>Evaluating performance with appropriate metrics</li>
+            </ol>
+
+            <h2>1. Dataset Preparation</h2>
+
+            <p>
+                We'll use the HuggingFace <code>datasets</code> library to load our data. For this example, I'm using a sentiment classification dataset, but the approach generalizes to any text classification task.
+            </p>
+
+            <pre><code class="language-python">from datasets import load_dataset
+from transformers import AutoTokenizer
+
+# Load dataset
+dataset = load_dataset('your-dataset-name')
+
+# Initialize tokenizer
+tokenizer = AutoTokenizer.from_pretrained('distilbert-base-uncased')
+
+# Tokenization function
+def tokenize_function(examples):
+    return tokenizer(
+        examples['text'],
+        padding='max_length',
+        truncation=True,
+        max_length=128
+    )
+
+# Apply tokenization
+tokenized_dataset = dataset.map(tokenize_function, batched=True)</code></pre>
+
+            <div class="note">
+                <strong>Note:</strong> We use <code>padding='max_length'</code> here for simplicity, but in production, dynamic padding through a data collator is more efficient. We'll implement that next.
+            </div>
+
+            <h2>2. Custom Data Collator for Dynamic Padding</h2>
+
+            <p>
+                Instead of padding all sequences to the maximum length upfront, we can pad dynamically to the longest sequence in each batch. This is more memory-efficient and faster.
+            </p>
+
+            <pre><code class="language-python">from transformers import DataCollatorWithPadding
+
+# Create data collator
+data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
+
+# The collator will:
+# 1. Take variable-length sequences in a batch
+# 2. Pad them to the longest sequence in that specific batch
+# 3. Create attention masks automatically</code></pre>
+
+            <h3>How the Data Collator Works</h3>
+
+            <p>
+                The data collator transforms a batch of samples with varying lengths into a properly padded tensor. Here's what happens:
+            </p>
+
+            <pre><code class="language-python"># Input: 4 samples with different lengths
+Sample 1: [101, 2054, 2003, 102]                    # length 4
+Sample 2: [101, 1045, 2293, 3269, 102]              # length 5
+Sample 3: [101, 6920, 102]                          # length 3
+Sample 4: [101, 2023, 2003, 1037, 6240, 6251, 102]  # length 7
+
+# Output: Padded batch (all length 7)
+input_ids: [
+    [101, 2054, 2003, 102, 0, 0, 0],      # padded with 0s
+    [101, 1045, 2293, 3269, 102, 0, 0],   # padded with 0s
+    [101, 6920, 102, 0, 0, 0, 0],         # padded with 0s
+    [101, 2023, 2003, 1037, 6240, 6251, 102]  # no padding needed
+]
+
+attention_mask: [
+    [1, 1, 1, 1, 0, 0, 0],  # 1=real token, 0=padding
+    [1, 1, 1, 1, 1, 0, 0],
+    [1, 1, 1, 0, 0, 0, 0],
+    [1, 1, 1, 1, 1, 1, 1]
+]</code></pre>
+
+            <h2>3. Handling Class Imbalance</h2>
+
+            <p>
+                Real-world datasets often have imbalanced classes. We can handle this by computing class weights and using them in our loss function.
+            </p>
+
+            <pre><code class="language-python">import torch
+import numpy as np
+from sklearn.utils.class_weight import compute_class_weight
+
+def calculate_class_weights(train_dataset, device):
+    """
+    Calculates class weights for handling imbalanced datasets.
+    """
+    # Extract labels from training set
+    train_labels = [train_dataset.dataset.labels[i] 
+                   for i in train_dataset.indices]
+    
+    # Compute class weights using sklearn
+    class_weights = compute_class_weight(
+        class_weight='balanced',
+        classes=np.unique(train_labels),
+        y=np.array(train_labels)
+    )
+    
+    # Convert to PyTorch tensor
+    class_weights_tensor = torch.tensor(
+        class_weights, 
+        dtype=torch.float
+    )
+    
+    return class_weights_tensor.to(device)
+
+# Calculate weights
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+class_weights = calculate_class_weights(train_dataset, device)</code></pre>
+
+            <h2>4. Loading the Model</h2>
+
+            <p>
+                We use <code>AutoModelForSequenceClassification</code> which automatically adds a classification head on top of DistilBERT.
+            </p>
+
+            <pre><code class="language-python">from transformers import AutoModelForSequenceClassification
+
+# Load pretrained model with classification head
+model = AutoModelForSequenceClassification.from_pretrained(
+    'distilbert-base-uncased',
+    num_labels=num_classes  # e.g., 3 for 3-class classification
+)
+
+# Move to device
+model = model.to(device)
+
+# The model architecture:
+# Input (batch_size, seq_len) 
+#   → DistilBERT encoder (768-dim hidden states)
+#   → Classification head (768 → num_classes)
+#   → Output logits (batch_size, num_classes)</code></pre>
+
+            <h2>5. Creating DataLoaders</h2>
+
+            <p>
+                DataLoaders handle batching, shuffling, and parallel data loading.
+            </p>
+
+            <pre><code class="language-python">from torch.utils.data import DataLoader
+
+def create_dataloaders(train_dataset, val_dataset, batch_size, data_collator):
+    """
+    Creates training and validation DataLoaders.
+    """
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,  # Shuffle training data
+        collate_fn=data_collator,  # Use our custom collator
+        num_workers=4  # Parallel data loading
+    )
+    
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,  # Don't shuffle validation
+        collate_fn=data_collator,
+        num_workers=4
+    )
+    
+    return train_loader, val_loader
+
+# Create loaders
+train_loader, val_loader = create_dataloaders(
+    train_dataset, 
+    val_dataset, 
+    batch_size=32,
+    data_collator=data_collator
+)</code></pre>
+
+            <h3>Understanding DataLoaders</h3>
+
+            <p>
+                A DataLoader is an iterator that serves batches of data. Think of it as a primed pipeline that only loads data when you actually iterate through it:
+            </p>
+
+            <pre><code class="language-python"># train_loader is just the pipeline (no data loaded yet)
+train_loader = DataLoader(...)
+
+# Data is loaded when you iterate
+for batch in train_loader:
+    # First iteration: samples 0-31
+    # Second iteration: samples 32-63
+    # And so on...
+    inputs = batch['input_ids']
+    labels = batch['labels']</code></pre>
+
+            <h2>6. Training Loop</h2>
+
+            <p>
+                Now we implement the training loop with proper loss calculation using class weights.
+            </p>
+
+            <pre><code class="language-python">from torch.optim import AdamW
+from torch.nn import CrossEntropyLoss
+from tqdm import tqdm
+
+# Setup
+optimizer = AdamW(model.parameters(), lr=2e-5)
+loss_fn = CrossEntropyLoss(weight=class_weights)
+num_epochs = 3
+
+# Training loop
+for epoch in range(num_epochs):
+    model.train()
+    total_loss = 0
+    
+    progress_bar = tqdm(train_loader, desc=f'Epoch {epoch+1}/{num_epochs}')
+    
+    for batch in progress_bar:
+        # Move batch to device
+        input_ids = batch['input_ids'].to(device)
+        attention_mask = batch['attention_mask'].to(device)
+        labels = batch['labels'].to(device)
+        
+        # Forward pass
+        outputs = model(
+            input_ids=input_ids,
+            attention_mask=attention_mask
+        )
+        
+        # Calculate loss with class weights
+        loss = loss_fn(outputs.logits, labels)
+        
+        # Backward pass
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        
+        # Track loss
+        total_loss += loss.item()
+        progress_bar.set_postfix({'loss': loss.item()})
+    
+    avg_loss = total_loss / len(train_loader)
+    print(f'Epoch {epoch+1} - Average Loss: {avg_loss:.4f}')
+    
+    # Validation
+    model.eval()
+    val_loss = 0
+    correct = 0
+    total = 0
+    
+    with torch.no_grad():
+        for batch in val_loader:
+            input_ids = batch['input_ids'].to(device)
+            attention_mask = batch['attention_mask'].to(device)
+            labels = batch['labels'].to(device)
+            
+            outputs = model(input_ids, attention_mask)
+            loss = loss_fn(outputs.logits, labels)
+            val_loss += loss.item()
+            
+            # Calculate accuracy
+            predictions = torch.argmax(outputs.logits, dim=1)
+            correct += (predictions == labels).sum().item()
+            total += labels.size(0)
+    
+    avg_val_loss = val_loss / len(val_loader)
+    accuracy = correct / total
+    print(f'Validation Loss: {avg_val_loss:.4f}, Accuracy: {accuracy:.4f}')
+</code></pre>
+
+            <h2>7. Evaluation Metrics</h2>
+
+            <p>
+                Beyond accuracy, we should look at precision, recall, and F1-score, especially for imbalanced datasets.
+            </p>
+
+            <pre><code class="language-python">from sklearn.metrics import classification_report, confusion_matrix
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+def evaluate_model(model, dataloader, device):
+    """
+    Comprehensive evaluation with multiple metrics.
+    """
+    model.eval()
+    all_predictions = []
+    all_labels = []
+    
+    with torch.no_grad():
+        for batch in dataloader:
+            input_ids = batch['input_ids'].to(device)
+            attention_mask = batch['attention_mask'].to(device)
+            labels = batch['labels'].to(device)
+            
+            outputs = model(input_ids, attention_mask)
+            predictions = torch.argmax(outputs.logits, dim=1)
+            
+            all_predictions.extend(predictions.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
+    
+    # Classification report
+    print(classification_report(all_labels, all_predictions))
+    
+    # Confusion matrix
+    cm = confusion_matrix(all_labels, all_predictions)
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+    plt.ylabel('True Label')
+    plt.xlabel('Predicted Label')
+    plt.title('Confusion Matrix')
+    plt.show()
+
+# Run evaluation
+evaluate_model(model, val_loader, device)</code></pre>
+
+            <h2>Key Takeaways</h2>
+
+            <ul>
+                <li><strong>Dynamic Padding:</strong> Use <code>DataCollatorWithPadding</code> for efficient memory usage instead of padding all sequences to max length</li>
+                <li><strong>Class Imbalance:</strong> Calculate and apply class weights to prevent the model from being biased toward majority classes</li>
+                <li><strong>Proper Evaluation:</strong> Look beyond accuracy—use F1-score, precision, and recall, especially for imbalanced datasets</li>
+                <li><strong>Device Management:</strong> Always move both model and data to the same device (CPU/GPU)</li>
+                <li><strong>Gradient Management:</strong> Remember to call <code>optimizer.zero_grad()</code> before each backward pass</li>
+            </ul>
+
+            <h2>Next Steps</h2>
+
+            <p>
+                This implementation provides a solid foundation, but there are several ways to improve it:
+            </p>
+
+            <ul>
+                <li>Add learning rate scheduling for better convergence</li>
+                <li>Implement early stopping to prevent overfitting</li>
+                <li>Use gradient accumulation for larger effective batch sizes</li>
+                <li>Add model checkpointing to save best models</li>
+                <li>Experiment with different optimizers (AdamW vs Adam vs SGD)</li>
+                <li>Try different pretrained models (RoBERTa, ALBERT, etc.)</li>
+            </ul>
+
+            <div class="note">
+                <strong>Full Code:</strong> The complete implementation with additional utilities and experiments is available in the <a href="https://github.com/banisafar/distilbert-classification" style="color: #667eea;">GitHub repository</a>.
+            </div>
+
+            <h2>References</h2>
+
+            <ul>
+                <li><a href="https://huggingface.co/docs/transformers/model_doc/distilbert">HuggingFace DistilBERT Documentation</a></li>
+                <li><a href="https://arxiv.org/abs/1910.01108">DistilBERT Paper (Sanh et al., 2019)</a></li>
+                <li><a href="https://huggingface.co/docs/transformers/main_classes/data_collator">HuggingFace Data Collators</a></li>
+            </ul>
+        </div>
+    </article>
+
+    <footer>
+        <p>© 2025 Sahar Banisafar</p>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script>hljs.highlightAll();</script>
+</body>
+</html>
