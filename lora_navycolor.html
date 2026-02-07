@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A deep dive into LoRA (Low-Rank Adaptation) - from mathematical foundations to production deployment">
+    <meta name="author" content="Sahar Banisafar">
+    <title>LoRA Decomposed: The Mathematics of Parameter-Efficient Fine-Tuning</title>
+    
+    <!-- Math rendering -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <!-- Syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+    
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --text-color: #333;
+            --bg-color: #ffffff;
+            --code-bg: #f8f9fa;
+            --border-color: #e1e4e8;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            line-height: 1.8;
+            color: var(--text-color);
+            background: var(--bg-color);
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 0.3em;
+            color: var(--primary-color);
+            line-height: 1.2;
+        }
+        
+        h2 {
+            font-size: 1.8em;
+            margin-top: 2em;
+            margin-bottom: 0.8em;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.3em;
+        }
+        
+        h3 {
+            font-size: 1.4em;
+            margin-top: 1.5em;
+            margin-bottom: 0.6em;
+            color: var(--secondary-color);
+        }
+        
+        p {
+            margin-bottom: 1.2em;
+        }
+        
+        em {
+            font-style: italic;
+            color: #555;
+        }
+        
+        strong {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        
+        code {
+            background: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9em;
+            color: var(--accent-color);
+        }
+        
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1.5em 0;
+            line-height: 1.5;
+        }
+        
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+            font-size: 0.9em;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5em 0;
+            font-size: 0.9em;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid var(--border-color);
+        }
+        
+        th {
+            background: var(--code-bg);
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        blockquote {
+            border-left: 4px solid var(--secondary-color);
+            padding-left: 20px;
+            margin: 1.5em 0;
+            color: #555;
+            font-style: italic;
+        }
+        
+        ul, ol {
+            margin-left: 2em;
+            margin-bottom: 1.2em;
+        }
+        
+        li {
+            margin-bottom: 0.5em;
+        }
+        
+        a {
+            color: var(--secondary-color);
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: border-bottom 0.2s;
+        }
+        
+        a:hover {
+            border-bottom: 1px solid var(--secondary-color);
+        }
+        
+        hr {
+            border: none;
+            border-top: 1px solid var(--border-color);
+            margin: 3em 0;
+        }
+        
+        .author {
+            font-style: italic;
+            color: #666;
+            margin-top: 3em;
+            padding-top: 2em;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        /* Math equations */
+        .MathJax {
+            font-size: 1.1em !important;
+        }
+        
+        /* Responsive */
+        @media (max-width: 600px) {
+            body {
+                padding: 20px 15px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            h2 {
+                font-size: 1.5em;
+            }
+            
+            h3 {
+                font-size: 1.2em;
+            }
+            
+            pre {
+                padding: 15px;
+                font-size: 0.85em;
+            }
+            
+            table {
+                font-size: 0.8em;
+            }
+            
+            th, td {
+                padding: 8px;
+            }
+        }
+        
+        /* Print styles */
+        @media print {
+            body {
+                max-width: 100%;
+                padding: 0;
+            }
+            
+            pre {
+                background: #f5f5f5;
+                color: #000;
+                border: 1px solid #ccc;
+            }
+            
+            a {
+                color: #000;
+                text-decoration: underline;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>LoRA Decomposed: The Mathematics of Parameter-Efficient Fine-Tuning</h1>
+    <p><em>A deep dive into Low-Rank Adaptation—from theoretical foundations to production deployment</em></p>
+    
+    <hr>
+    
+    <h2>Introduction: The Fine-Tuning Dilemma</h2>
+    <p>Imagine you have a state-of-the-art language model with 175 billion parameters. You want to adapt it for a specific task—medical diagnosis, legal document analysis, or sentiment classification. The traditional approach? Fine-tune all 175 billion parameters. The problem? This is prohibitively expensive, time-consuming, and requires enormous computational resources.</p>
+    
+    <p>Enter <strong>LoRA (Low-Rank Adaptation)</strong>, a technique that lets you adapt massive models by training less than 1% of their parameters while maintaining competitive performance. But why does this work? The answer lies in a beautiful mathematical insight about the structure of gradient updates during fine-tuning.</p>
+    
+    <p>In this post, we'll build LoRA from first principles, starting with the mathematical intuition, working through the formal derivations, and ending with practical implementation guidelines. By the end, you'll understand not just <em>how</em> to use LoRA, but <em>why</em> it works.</p>
+    
+    <hr>
+    
+    <h2>Part 1: The Core Mathematical Insight</h2>
+    
+    <h3>The Traditional Fine-Tuning Problem</h3>
+    <p>When we fine-tune a neural network, we start with pre-trained weights <strong>W₀</strong> ∈ ℝ<sup>d×k</sup> and update them through gradient descent:</p>
+    
+    <pre><code>W = W₀ + ΔW</code></pre>
+    
+    <p>where <strong>ΔW</strong> represents the cumulative change to the weights during fine-tuning.</p>
+    
+    <p>For a large model:</p>
+    <ul>
+        <li><strong>d</strong> (input dimension) might be 4096</li>
+        <li><strong>k</strong> (output dimension) might be 4096</li>
+        <li><strong>Total parameters in W</strong>: 4096 × 4096 = 16,777,216 parameters</li>
+    </ul>
+    
+    <p>During traditional fine-tuning, we must store and update all 16+ million parameters in this single weight matrix. Multiply this across all layers in a transformer, and the memory and computational requirements become staggering.</p>
+    
+    <h3>The Low-Rank Hypothesis</h3>
+    <p>Here's the key insight from the LoRA paper (<a href="https://arxiv.org/abs/2106.09685">Hu et al., 2021</a>): <strong>The weight updates ΔW during adaptation to downstream tasks have a low "intrinsic rank."</strong></p>
+    
+    <p>What does this mean? In linear algebra, the <strong>rank</strong> of a matrix is the dimension of the vector space spanned by its columns (or rows). A matrix has low rank when it can be well-approximated by the product of two smaller matrices.</p>
+    
+    <p>Formally, if ΔW has rank <strong>r</strong> where <strong>r ≪ min(d,k)</strong>, we can write:</p>
+    
+    <pre><code>ΔW ≈ B·A</code></pre>
+    
+    <p>where:</p>
+    <ul>
+        <li><strong>B</strong> ∈ ℝ<sup>d×r</sup></li>
+        <li><strong>A</strong> ∈ ℝ<sup>r×k</sup></li>
+        <li><strong>r</strong> is much smaller than both <strong>d</strong> and <strong>k</strong></li>
+    </ul>
+    
+    <p>This decomposition is exact when <strong>rank(ΔW) = r</strong>.</p>
+    
+    <h3>Why Does This Matter? A Concrete Example</h3>
+    <p>Let's make this concrete with numbers:</p>
+    
+    <p><strong>Scenario:</strong> Adapting a single attention layer in BERT-base</p>
+    <ul>
+        <li><strong>d</strong> = 768 (hidden dimension)</li>
+        <li><strong>k</strong> = 768 (hidden dimension)</li>
+        <li><strong>r</strong> = 8 (LoRA rank)</li>
+    </ul>
+    
+    <p><strong>Parameter count comparison:</strong></p>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Method</th>
+                <th>Parameters</th>
+                <th>Calculation</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Full fine-tuning</td>
+                <td>589,824</td>
+                <td>768 × 768</td>
+            </tr>
+            <tr>
+                <td>LoRA (r=8)</td>
+                <td>12,288</td>
+                <td>(768 × 8) + (8 × 768)</td>
+            </tr>
+            <tr>
+                <td><strong>Reduction</strong></td>
+                <td><strong>98.0%</strong></td>
+                <td>12,288 / 589,824</td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <p>We've reduced trainable parameters by 98% while (as we'll see) maintaining most of the model's adaptation capability.</p>
+    
+    <hr>
+    
+    <h2>Part 2: Mathematical Foundations</h2>
+    
+    <h3>Matrix Rank and the Rank-Nullity Theorem</h3>
+    <p>Before diving deeper, let's establish some linear algebra foundations.</p>
+    
+    <p><strong>Definition (Matrix Rank):</strong> The rank of a matrix <strong>M</strong> ∈ ℝ<sup>m×n</sup>, denoted rank(M), is the dimension of the column space (or equivalently, row space) of M.</p>
+    
+    <p><strong>Properties:</strong></p>
+    <ol>
+        <li>rank(M) ≤ min(m, n)</li>
+        <li>For matrix product: rank(AB) ≤ min(rank(A), rank(B))</li>
+        <li>If M = AB where A ∈ ℝ<sup>m×r</sup>, B ∈ ℝ<sup>r×n</sup>, then rank(M) ≤ r</li>
+    </ol>
+    
+    <p><strong>The Rank-Nullity Theorem:</strong> For a linear transformation T: V → W represented by matrix M,</p>
+    
+    <pre><code>dim(V) = rank(M) + nullity(M)</code></pre>
+    
+    <p>where nullity(M) is the dimension of the null space (kernel) of M.</p>
+    
+    <h3>Singular Value Decomposition (SVD)</h3>
+    <p>The connection between low-rank approximation and LoRA becomes clearer through SVD.</p>
+    
+    <p><strong>Theorem (SVD):</strong> Any matrix <strong>M</strong> ∈ ℝ<sup>m×n</sup> can be decomposed as:</p>
+    
+    <pre><code>M = UΣV<sup>T</sup></code></pre>
+    
+    <p>where:</p>
+    <ul>
+        <li><strong>U</strong> ∈ ℝ<sup>m×m</sup> is orthogonal (U<sup>T</sup>U = I)</li>
+        <li><strong>Σ</strong> ∈ ℝ<sup>m×n</sup> is diagonal with singular values σ₁ ≥ σ₂ ≥ ... ≥ σ<sub>min</sub> ≥ 0</li>
+        <li><strong>V</strong> ∈ ℝ<sup>n×n</sup> is orthogonal (V<sup>T</sup>V = I)</li>
+    </ul>
+    
+    <p><strong>Best Low-Rank Approximation (Eckart-Young Theorem):</strong></p>
+    
+    <p>The best rank-r approximation to M (in Frobenius norm) is:</p>
+    
+    <pre><code>M̂<sub>r</sub> = Σ<sub>i=1</sub><sup>r</sup> σ<sub>i</sub>u<sub>i</sub>v<sub>i</sub><sup>T</sup></code></pre>
+    
+    <p>where u<sub>i</sub> and v<sub>i</sub> are the i-th columns of U and V respectively.</p>
+    
+    <p><strong>The approximation error is:</strong></p>
+    
+    <pre><code>‖M - M̂<sub>r</sub>‖<sub>F</sub> = √(Σ<sub>i=r+1</sub><sup>min</sup> σ<sub>i</sub>²)</code></pre>
+    
+    <p>This tells us that if the singular values decay rapidly (σ<sub>r+1</sub>, σ<sub>r+2</sub>, ... are small), then a low-rank approximation captures most of the information in M.</p>
+    
+    <h3>Why Gradient Updates Are Low-Rank</h3>
+    <p><strong>Empirical observation:</strong> During fine-tuning on downstream tasks, the matrix ΔW of weight updates often has rapidly decaying singular values.</p>
+    
+    <p><strong>Intuitive explanation:</strong></p>
+    <ol>
+        <li>Pre-trained models have already learned rich, general representations</li>
+        <li>Task-specific adaptation requires adjusting these representations along a few key directions</li>
+        <li>These adjustments lie in a low-dimensional subspace of the full parameter space</li>
+    </ol>
+    
+    <p><strong>Mathematical perspective:</strong></p>
+    
+    <p>Let's say our loss function is L(W) and we perform gradient descent:</p>
+    
+    <pre><code>W<sub>t+1</sub> = W<sub>t</sub> - η∇L(W<sub>t</sub>)</code></pre>
+    
+    <p>The total update after T steps is:</p>
+    
+    <pre><code>ΔW = W<sub>T</sub> - W<sub>0</sub> = -η Σ<sub>t=0</sub><sup>T-1</sup> ∇L(W<sub>t</sub>)</code></pre>
+    
+    <p>If the gradients ∇L(W<sub>t</sub>) consistently point in similar directions (i.e., they span a low-dimensional subspace), then their sum ΔW will also be low-rank.</p>
+    
+    <p>This happens when:</p>
+    <ul>
+        <li>The downstream task is related to the pre-training task</li>
+        <li>The model is already close to a good solution</li>
+        <li>The fine-tuning dataset is relatively small</li>
+    </ul>
+    
+    <hr>
+    
+    <h2>Part 3: The LoRA Algorithm</h2>
+    
+    <h3>Formal Definition</h3>
+    <p>Given a pre-trained weight matrix <strong>W₀</strong> ∈ ℝ<sup>d×k</sup>, LoRA represents the weight update as:</p>
+    
+    <pre><code>W = W₀ + ΔW = W₀ + BA</code></pre>
+    
+    <p>where:</p>
+    <ul>
+        <li><strong>B</strong> ∈ ℝ<sup>d×r</sup> is initialized from a normal distribution 𝒩(0, σ²)</li>
+        <li><strong>A</strong> ∈ ℝ<sup>r×k</sup> is initialized to zero</li>
+        <li><strong>r</strong> ≪ min(d, k) is the rank</li>
+    </ul>
+    
+    <p><strong>Key insight:</strong> During training:</p>
+    <ul>
+        <li>W₀ is <strong>frozen</strong> (no gradients computed)</li>
+        <li>Only B and A are trained</li>
+        <li>At inference, we can merge: W = W₀ + BA</li>
+    </ul>
+    
+    <h3>Scaling Factor α</h3>
+    <p>In practice, LoRA includes a scaling factor:</p>
+    
+    <pre><code>W = W₀ + (α/r)BA</code></pre>
+    
+    <p>where α is a constant (often set to α = r).</p>
+    
+    <p><strong>Purpose of scaling:</strong></p>
+    <ol>
+        <li>Allows changing r without changing hyperparameter tuning</li>
+        <li>Stabilizes training across different rank values</li>
+        <li>Typical setting: α = r, so the scale is (α/r) = 1</li>
+    </ol>
+    
+    <h3>Forward Pass</h3>
+    <p>For an input <strong>x</strong> ∈ ℝ<sup>k</sup>, the forward pass becomes:</p>
+    
+    <pre><code>h = Wx = W₀x + (α/r)BAx</code></pre>
+    
+    <p>Computationally:</p>
+    
+    <pre><code class="language-python"># Frozen forward pass
+h = W_0 @ x
+
+# LoRA forward pass (trainable)
+h_lora = (alpha/r) * B @ (A @ x)
+
+# Combined output
+h_total = h + h_lora</code></pre>
+    
+    <p><strong>Computational efficiency:</strong></p>
+    <ul>
+        <li>Base model: O(dk) operations</li>
+        <li>LoRA addition: O(dr + rk) operations</li>
+        <li>Total: O(dk + dr + rk)</li>
+    </ul>
+    
+    <p>When r ≪ d, k, the overhead is minimal.</p>
+    
+    <hr>
+    
+    <p class="author"><em>Sahar Banisafar is a data scientist with a mathematics background and 6 years of production ML experience. She writes about the mathematics behind modern machine learning at <a href="https://banisafar.com">banisafar.com</a>.</em></p>
+</body>
+</html>

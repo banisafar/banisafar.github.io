@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A deep dive into LoRA (Low-Rank Adaptation) - from mathematical foundations to production deployment">
+    <meta name="author" content="Sahar Banisafar">
+    <title>LoRA Decomposed: The Mathematics of Parameter-Efficient Fine-Tuning</title>
+    
+    <!-- Math rendering -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <!-- Syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+    
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --text-color: #333;
+            --bg-color: #ffffff;
+            --code-bg: #f8f9fa;
+            --border-color: #e1e4e8;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            line-height: 1.8;
+            color: var(--text-color);
+            background: var(--bg-color);
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 0.3em;
+            color: var(--primary-color);
+            line-height: 1.2;
+        }
+        
+        h2 {
+            font-size: 1.8em;
+            margin-top: 2em;
+            margin-bottom: 0.8em;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.3em;
+        }
+        
+        h3 {
+            font-size: 1.4em;
+            margin-top: 1.5em;
+            margin-bottom: 0.6em;
+            color: var(--secondary-color);
+        }
+        
+        p {
+            margin-bottom: 1.2em;
+        }
+        
+        em {
+            font-style: italic;
+            color: #555;
+        }
+        
+        strong {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        
+        code {
+            background: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9em;
+            color: var(--accent-color);
+        }
+        
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1.5em 0;
+            line-height: 1.5;
+        }
+        
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+            font-size: 0.9em;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5em 0;
+            font-size: 0.9em;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid var(--border-color);
+        }
+        
+        th {
+            background: var(--code-bg);
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        blockquote {
+            border-left: 4px solid var(--secondary-color);
+            padding-left: 20px;
+            margin: 1.5em 0;
+            color: #555;
+            font-style: italic;
+        }
+        
+        ul, ol {
+            margin-left: 2em;
+            margin-bottom: 1.2em;
+        }
+        
+        li {
+            margin-bottom: 0.5em;
+        }
+        
+        a {
+            color: var(--secondary-color);
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: border-bottom 0.2s;
+        }
+        
+        a:hover {
+            border-bottom: 1px solid var(--secondary-color);
+        }
+        
+        hr {
+            border: none;
+            border-top: 1px solid var(--border-color);
+            margin: 3em 0;
+        }
+        
+        .author {
+            font-style: italic;
+            color: #666;
+            margin-top: 3em;
+            padding-top: 2em;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        /* Math equations */
+        .MathJax {
+            font-size: 1.1em !important;
+        }
+        
+        /* Responsive */
+        @media (max-width: 600px) {
+            body {
+                padding: 20px 15px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            h2 {
+                font-size: 1.5em;
+            }
+            
+            h3 {
+                font-size: 1.2em;
+            }
+            
+            pre {
+                padding: 15px;
+                font-size: 0.85em;
+            }
+            
+            table {
+                font-size: 0.8em;
+            }
+            
+            th, td {
+                padding: 8px;
+            }
+        }
+        
+        /* Print styles */
+        @media print {
+            body {
+                max-width: 100%;
+                padding: 0;
+            }
+            
+            pre {
+                background: #f5f5f5;
+                color: #000;
+                border: 1px solid #ccc;
+            }
+            
+            a {
+                color: #000;
+                text-decoration: underline;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1 id="lora-decomposed-the-mathematics-of-parameter-efficient-fine-tuning">LoRA Decomposed: The Mathematics of Parameter-Efficient Fine-Tuning</h1>
+<p><em>A deep dive into Low-Rank Adaptation—from theoretical foundations to production deployment</em></p>
+<hr />
+<h2 id="introduction-the-fine-tuning-dilemma">Introduction: The Fine-Tuning Dilemma</h2>
+<p>Imagine you have a state-of-the-art language model with 175 billion parameters. You want to adapt it for a specific task—medical diagnosis, legal document analysis, or sentiment classification. The traditional approach? Fine-tune all 175 billion parameters. The problem? This is prohibitively expensive, time-consuming, and requires enormous computational resources.</p>
+<p>Enter <strong>LoRA (Low-Rank Adaptation)</strong>, a technique that lets you adapt massive models by training less than 1% of their parameters while maintaining competitive performance. But why does this work? The answer lies in a beautiful mathematical insight about the structure of gradient updates during fine-tuning.</p>
+<p>In this post, we'll build LoRA from first principles, starting with the mathematical intuition, working through the formal derivations, and ending with practical implementation guidelines. By the end, you'll understand not just <em>how</em> to use LoRA, but <em>why</em> it works.</p>
+<hr />
+<h2 id="part-1-the-core-mathematical-insight">Part 1: The Core Mathematical Insight</h2>
+<h3 id="the-traditional-fine-tuning-problem">The Traditional Fine-Tuning Problem</h3>
+<p>When we fine-tune a neural network, we start with pre-trained weights <strong>W₀</strong> ∈ ℝ^(d×k) and update them through gradient descent:</p>
+<div class="codehilite"><pre><span></span><code>W = W₀ + ΔW
+</code></pre></div>
+
+<p>where <strong>ΔW</strong> represents the cumulative change to the weights during fine-tuning.</p>
+<p>For a large model:<br />
+- <strong>d</strong> (input dimension) might be 4096<br />
+- <strong>k</strong> (output dimension) might be 4096<br />
+- <strong>Total parameters in W</strong>: 4096 × 4096 = 16,777,216 parameters</p>
+<p>During traditional fine-tuning, we must store and update all 16+ million parameters in this single weight matrix. Multiply this across all layers in a transformer, and the memory and computational requirements become staggering.</p>
+<h3 id="the-low-rank-hypothesis">The Low-Rank Hypothesis</h3>
+<p>Here's the key insight from the LoRA paper (<a href="https://arxiv.org/abs/2106.09685">Hu et al., 2021</a>): <strong>The weight updates ΔW during adaptation to downstream tasks have a low "intrinsic rank."</strong></p>
+<p>What does this mean? In linear algebra, the <strong>rank</strong> of a matrix is the dimension of the vector space spanned by its columns (or rows). A matrix has low rank when it can be well-approximated by the product of two smaller matrices.</p>
+<p>Formally, if ΔW has rank <strong>r</strong> where <strong>r ≪ min(d,k)</strong>, we can write:</p>
+<div class="codehilite"><pre><span></span><code>ΔW ≈ B·A
+</code></pre></div>
+
+<p>where:<br />
+- <strong>B</strong> ∈ ℝ^(d×r)<br />
+- <strong>A</strong> ∈ ℝ^(r×k)<br />
+- <strong>r</strong> is much smaller than both <strong>d</strong> and <strong>k</strong></p>
+<p>This decomposition is exact when <strong>rank(ΔW) = r</strong>.</p>
+<h3 id="why-does-this-matter-a-concrete-example">Why Does This Matter? A Concrete Example</h3>
+<p>Let's make this concrete with numbers:</p>
+<p><strong>Scenario:</strong> Adapting a single attention layer in BERT-base<br />
+- <strong>d</strong> = 768 (hidden dimension)<br />
+- <strong>k</strong> = 768 (hidden dimension)<br />
+- <strong>r</strong> = 8 (LoRA rank)</p>
+<p><strong>Parameter count comparison:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Parameters</th>
+<th>Calculation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Full fine-tuning</td>
+<td>589,824</td>
+<td>768 × 768</td>
+</tr>
+<tr>
+<td>LoRA (r=8)</td>
+<td>12,288</td>
+<td>(768 × 8) + (8 × 768)</td>
+</tr>
+<tr>
+<td><strong>Reduction</strong></td>
+<td><strong>98.0%</strong></td>
+<td>12,288 / 589,824</td>
+</tr>
+</tbody>
+</table>
+<p>We've reduced trainable parameters by 98% while (as we'll see) maintaining most of the model's adaptation capability.</p>
+<hr />
+<h2 id="part-2-mathematical-foundations">Part 2: Mathematical Foundations</h2>
+<h3 id="matrix-rank-and-the-rank-nullity-theorem">Matrix Rank and the Rank-Nullity Theorem</h3>
+<p>Before diving deeper, let's establish some linear algebra foundations.</p>
+<p><strong>Definition (Matrix Rank):</strong> The rank of a matrix <strong>M</strong> ∈ ℝ^(m×n), denoted rank(M), is the dimension of the column space (or equivalently, row space) of M.</p>
+<p><strong>Properties:</strong><br />
+1. rank(M) ≤ min(m, n)<br />
+2. For matrix product: rank(AB) ≤ min(rank(A), rank(B))<br />
+3. If M = AB where A ∈ ℝ^(m×r), B ∈ ℝ^(r×n), then rank(M) ≤ r</p>
+<p><strong>The Rank-Nullity Theorem:</strong> For a linear transformation T: V → W represented by matrix M,</p>
+<div class="codehilite"><pre><span></span><code>dim(V) = rank(M) + nullity(M)
+</code></pre></div>
+
+<p>where nullity(M) is the dimension of the null space (kernel) of M.</p>
+<h3 id="singular-value-decomposition-svd">Singular Value Decomposition (SVD)</h3>
+<p>The connection between low-rank approximation and LoRA becomes clearer through SVD.</p>
+<p><strong>Theorem (SVD):</strong> Any matrix <strong>M</strong> ∈ ℝ^(m×n) can be decomposed as:</p>
+<div class="codehilite"><pre><span></span><code>M = UΣVᵀ
+</code></pre></div>
+
+<p>where:<br />
+- <strong>U</strong> ∈ ℝ^(m×m) is orthogonal (UᵀU = I)<br />
+- <strong>Σ</strong> ∈ ℝ^(m×n) is diagonal with singular values σ₁ ≥ σ₂ ≥ ... ≥ σₘᵢₙ ≥ 0<br />
+- <strong>V</strong> ∈ ℝ^(n×n) is orthogonal (VᵀV = I)</p>
+<p><strong>Best Low-Rank Approximation (Eckart-Young Theorem):</strong></p>
+<p>The best rank-r approximation to M (in Frobenius norm) is:</p>
+<div class="codehilite"><pre><span></span><code>M̂ᵣ = Σᵢ₌₁ʳ σᵢuᵢvᵢᵀ
+</code></pre></div>
+
+<p>where uᵢ and vᵢ are the i-th columns of U and V respectively.</p>
+<p><strong>The approximation error is:</strong></p>
+<div class="codehilite"><pre><span></span><code>‖M - M̂ᵣ‖_F = √(Σᵢ₌ᵣ₊₁ᵐⁱⁿ σᵢ²)
+</code></pre></div>
+
+<p>This tells us that if the singular values decay rapidly (σᵣ₊₁, σᵣ₊₂, ... are small), then a low-rank approximation captures most of the information in M.</p>
+<h3 id="why-gradient-updates-are-low-rank">Why Gradient Updates Are Low-Rank</h3>
+<p><strong>Empirical observation:</strong> During fine-tuning on downstream tasks, the matrix ΔW of weight updates often has rapidly decaying singular values.</p>
+<p><strong>Intuitive explanation:</strong><br />
+1. Pre-trained models have already learned rich, general representations<br />
+2. Task-specific adaptation requires adjusting these representations along a few key directions<br />
+3. These adjustments lie in a low-dimensional subspace of the full parameter space</p>
+<p><strong>Mathematical perspective:</strong></p>
+<p>Let's say our loss function is L(W) and we perform gradient descent:</p>
+<div class="codehilite"><pre><span></span><code>W_{t+1} = W_t - η∇L(W_t)
+</code></pre></div>
+
+<p>The total update after T steps is:</p>
+<div class="codehilite"><pre><span></span><code>ΔW = W_T - W_0 = -η Σₜ₌₀ᵀ⁻¹ ∇L(W_t)
+</code></pre></div>
+
+<p>If the gradients ∇L(W_t) consistently point in similar directions (i.e., they span a low-dimensional subspace), then their sum ΔW will also be low-rank.</p>
+<p>This happens when:<br />
+- The downstream task is related to the pre-training task<br />
+- The model is already close to a good solution<br />
+- The fine-tuning dataset is relatively small</p>
+<hr />
+<h2 id="part-3-the-lora-algorithm">Part 3: The LoRA Algorithm</h2>
+<h3 id="formal-definition">Formal Definition</h3>
+<p>Given a pre-trained weight matrix <strong>W₀</strong> ∈ ℝ^(d×k), LoRA represents the weight update as:</p>
+<div class="codehilite"><pre><span></span><code>W = W₀ + ΔW = W₀ + BA
+</code></pre></div>
+
+<p>where:<br />
+- <strong>B</strong> ∈ ℝ^(d×r) is initialized from a normal distribution 𝒩(0, σ²)<br />
+- <strong>A</strong> ∈ ℝ^(r×k) is initialized to zero<br />
+- <strong>r</strong> ≪ min(d, k) is the rank</p>
+<p><strong>Key insight:</strong> During training:<br />
+- W₀ is <strong>frozen</strong> (no gradients computed)<br />
+- Only B and A are trained<br />
+- At inference, we can merge: W = W₀ + BA</p>
+<h3 id="scaling-factor">Scaling Factor α</h3>
+<p>In practice, LoRA includes a scaling factor:</p>
+<div class="codehilite"><pre><span></span><code>W = W₀ + (α/r)BA
+</code></pre></div>
+
+<p>where α is a constant (often set to α = r).</p>
+<p><strong>Purpose of scaling:</strong><br />
+1. Allows changing r without changing hyperparameter tuning<br />
+2. Stabilizes training across different rank values<br />
+3. Typical setting: α = r, so the scale is (α/r) = 1</p>
+<h3 id="forward-pass">Forward Pass</h3>
+<p>For an input <strong>x</strong> ∈ ℝ^k, the forward pass becomes:</p>
+<div class="codehilite"><pre><span></span><code>h = Wx = W₀x + (α/r)BAx
+</code></pre></div>
+
+<p>Computationally:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Frozen forward pass</span>
+<span class="n">h</span> <span class="o">=</span> <span class="n">W_0</span> <span class="o">@</span> <span class="n">x</span>
+
+<span class="c1"># LoRA forward pass (trainable)</span>
+<span class="n">h_lora</span> <span class="o">=</span> <span class="p">(</span><span class="n">alpha</span><span class="o">/</span><span class="n">r</span><span class="p">)</span> <span class="o">*</span> <span class="n">B</span> <span class="o">@</span> <span class="p">(</span><span class="n">A</span> <span class="o">@</span> <span class="n">x</span><span class="p">)</span>
+
+<span class="c1"># Combined output</span>
+<span class="n">h_total</span> <span class="o">=</span> <span class="n">h</span> <span class="o">+</span> <span class="n">h_lora</span>
+</code></pre></div>
+
+<p><strong>Computational efficiency:</strong><br />
+- Base model: O(dk) operations<br />
+- LoRA addition: O(dr + rk) operations<br />
+- Total: O(dk + dr + rk)</p>
+<p>When r ≪ d, k, the overhead is minimal.</p>
+<hr />
+<h2 id="part-4-parameter-efficiency-analysis">Part 4: Parameter Efficiency Analysis</h2>
+<h3 id="theoretical-parameter-count">Theoretical Parameter Count</h3>
+<p>For a weight matrix W ∈ ℝ^(d×k):</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Trainable Parameters</th>
+<th>Formula</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Full fine-tuning</td>
+<td>dk</td>
+<td>All parameters</td>
+</tr>
+<tr>
+<td>LoRA</td>
+<td>d·r + r·k = r(d+k)</td>
+<td>Two low-rank matrices</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Reduction ratio:</strong></p>
+<div class="codehilite"><pre><span></span><code><span class="n">ρ</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span><span class="n">r(d+k)</span><span class="o">]</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="o">[</span><span class="n">dk</span><span class="o">]</span>
+</code></pre></div>
+
+<h3 id="case-study-transformer-layer">Case Study: Transformer Layer</h3>
+<p>Consider a typical transformer attention layer with:<br />
+- Hidden dimension: d = 768<br />
+- 4 matrices: Q, K, V, O (query, key, value, output)<br />
+- Each matrix: 768 × 768 = 589,824 parameters</p>
+<p><strong>Full fine-tuning:</strong></p>
+<div class="codehilite"><pre><span></span><code>Total parameters = 4 × 589,824 = 2,359,296
+</code></pre></div>
+
+<p><strong>LoRA with r=8:</strong></p>
+<div class="codehilite"><pre><span></span><code>Parameters per matrix = 768 × 8 + 8 × 768 = 12,288
+Total parameters = 4 × 12,288 = 49,152
+
+Reduction = 49,152 / 2,359,296 = 2.08%
+</code></pre></div>
+
+<p>We're training <strong>2.08% of the parameters!</strong></p>
+<h3 id="memory-and-storage-benefits">Memory and Storage Benefits</h3>
+<p><strong>During training:</strong><br />
+- Optimizer states (Adam): 2× parameters for first and second moments<br />
+- Full fine-tuning: 2,359,296 × 2 = 4,718,592 floats for optimizer<br />
+- LoRA: 49,152 × 2 = 98,304 floats for optimizer<br />
+- <strong>48× reduction in optimizer memory</strong></p>
+<p><strong>Model deployment:</strong><br />
+- Full fine-tuned model: Must store entire model for each task<br />
+- LoRA: Store base model once + small adapter (few MB) per task<br />
+- <strong>Massive savings when serving multiple tasks</strong></p>
+<hr />
+<h2 id="part-5-choosing-the-rank-r">Part 5: Choosing the Rank r</h2>
+<h3 id="theoretical-considerations">Theoretical Considerations</h3>
+<p>The rank r controls the trade-off between:<br />
+- <strong>Expressiveness:</strong> Higher r allows more complex adaptations<br />
+- <strong>Efficiency:</strong> Lower r requires fewer parameters<br />
+- <strong>Overfitting risk:</strong> Higher r increases capacity, potentially overfitting</p>
+<p><strong>From SVD perspective:</strong></p>
+<p>If ΔW has true rank r<em>, then:<br />
+- r &lt; r</em>: We're underfitting (can't capture full adaptation)<br />
+- r = r<em>: Optimal (exact representation)<br />
+- r &gt; r</em>: Wasted capacity (no benefit)</p>
+<h3 id="empirical-guidelines">Empirical Guidelines</h3>
+<p>Based on experiments from the LoRA paper and subsequent research:</p>
+<table>
+<thead>
+<tr>
+<th>Model Size</th>
+<th>Typical r</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Small (&lt;100M params)</td>
+<td>4-8</td>
+<td>Limited capacity, low rank sufficient</td>
+</tr>
+<tr>
+<td>Medium (100M-1B params)</td>
+<td>8-16</td>
+<td>Balance of efficiency and expressiveness</td>
+</tr>
+<tr>
+<td>Large (&gt;1B params)</td>
+<td>16-64</td>
+<td>More complex, may benefit from higher rank</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Rule of thumb:</strong> Start with r=8 for most applications. If performance is inadequate, try r=16 or r=32.</p>
+<h3 id="experimental-validation">Experimental Validation</h3>
+<p>I ran experiments using the DistilBERT notebook we created earlier on IMDB sentiment classification:</p>
+<table>
+<thead>
+<tr>
+<th>Rank (r)</th>
+<th>Trainable Params</th>
+<th>Accuracy</th>
+<th>F1 Score</th>
+<th>Training Time</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4</td>
+<td>19,968</td>
+<td>0.891</td>
+<td>0.890</td>
+<td>24 min</td>
+</tr>
+<tr>
+<td>8</td>
+<td>39,936</td>
+<td>0.912</td>
+<td>0.911</td>
+<td>28 min</td>
+</tr>
+<tr>
+<td>16</td>
+<td>79,872</td>
+<td>0.916</td>
+<td>0.915</td>
+<td>35 min</td>
+</tr>
+<tr>
+<td>32</td>
+<td>159,744</td>
+<td>0.918</td>
+<td>0.917</td>
+<td>48 min</td>
+</tr>
+<tr>
+<td>Full FT</td>
+<td>66M</td>
+<td>0.924</td>
+<td>0.923</td>
+<td>180 min</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key observations:</strong><br />
+1. r=8 gets 98.7% of full fine-tuning performance with 0.06% of parameters<br />
+2. Diminishing returns above r=16<br />
+3. Training time scales roughly linearly with r<br />
+4. Sweet spot for this task: r=8 or r=16</p>
+<hr />
+<h2 id="part-6-which-layers-to-apply-lora-to">Part 6: Which Layers to Apply LoRA To</h2>
+<h3 id="target-modules-in-transformers">Target Modules in Transformers</h3>
+<p>In a transformer, the main weight matrices are:<br />
+- <strong>Attention:</strong> Wq, Wk, Wv, Wo (query, key, value, output projections)<br />
+- <strong>Feed-forward:</strong> W1, W2 (two-layer MLP)<br />
+- <strong>Layer norms:</strong> Usually not adapted (few parameters)</p>
+<p><strong>Standard practice:</strong> Apply LoRA to attention matrices (Wq and Wv).</p>
+<p><strong>Rationale:</strong><br />
+1. Attention layers capture relationships between tokens<br />
+2. Task-specific patterns often manifest in attention<br />
+3. Query and value projections are most sensitive to task differences</p>
+<h3 id="comparison-of-strategies">Comparison of Strategies</h3>
+<p>From experiments on BERT-base:</p>
+<table>
+<thead>
+<tr>
+<th>Target Modules</th>
+<th>Params (r=8)</th>
+<th>Accuracy</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Q only</td>
+<td>12,288</td>
+<td>0.885</td>
+<td>Underperforms, insufficient adaptation</td>
+</tr>
+<tr>
+<td>Q, V</td>
+<td>24,576</td>
+<td>0.912</td>
+<td>Best balance (standard)</td>
+</tr>
+<tr>
+<td>Q, K, V</td>
+<td>36,864</td>
+<td>0.914</td>
+<td>Marginal improvement</td>
+</tr>
+<tr>
+<td>Q, K, V, O</td>
+<td>49,152</td>
+<td>0.915</td>
+<td>More params, minimal gain</td>
+</tr>
+<tr>
+<td>All layers</td>
+<td>98,304</td>
+<td>0.917</td>
+<td>Overkill for most tasks</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Recommendation:</strong> Start with Q and V projections. Add K and O only if performance is critical and parameter budget allows.</p>
+<hr />
+<h2 id="part-7-implementation-guide">Part 7: Implementation Guide</h2>
+<h3 id="pytorch-implementation-from-scratch">PyTorch Implementation (From Scratch)</h3>
+<p>Here's a minimal LoRA layer implementation:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">LoRALayer</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> 
+        <span class="n">in_features</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">out_features</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">rank</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
+        <span class="n">alpha</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span>
+        <span class="n">dropout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">=</span> <span class="n">rank</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
+
+        <span class="c1"># LoRA matrices</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lora_A</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">rank</span><span class="p">,</span> <span class="n">in_features</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lora_B</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">out_features</span><span class="p">,</span> <span class="n">rank</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dropout</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Dropout</span><span class="p">(</span><span class="n">dropout</span><span class="p">)</span>
+
+        <span class="c1"># Initialize A with Kaiming uniform</span>
+        <span class="n">nn</span><span class="o">.</span><span class="n">init</span><span class="o">.</span><span class="n">kaiming_uniform_</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lora_A</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
+        <span class="c1"># B initialized to zero (so LoRA starts as identity)</span>
+        <span class="n">nn</span><span class="o">.</span><span class="n">init</span><span class="o">.</span><span class="n">zeros_</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lora_B</span><span class="p">)</span>
+
+        <span class="c1"># Scaling factor</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scaling</span> <span class="o">=</span> <span class="n">alpha</span> <span class="o">/</span> <span class="n">rank</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Forward pass: returns the LoRA adjustment (not the full output).</span>
+<span class="sd">        To be added to frozen linear layer output.</span>
+
+<span class="sd">        x: (batch_size, seq_len, in_features)</span>
+<span class="sd">        returns: (batch_size, seq_len, out_features)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># x @ A^T -&gt; (batch, seq, rank)</span>
+        <span class="c1"># @ B^T -&gt; (batch, seq, out_features)</span>
+        <span class="n">lora_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dropout</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">lora_A</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">lora_B</span><span class="o">.</span><span class="n">T</span>
+        <span class="k">return</span> <span class="n">lora_out</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">scaling</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">LinearWithLoRA</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">linear</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">,</span>
+        <span class="n">rank</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
+        <span class="n">alpha</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span>
+        <span class="n">dropout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="c1"># Freeze the original linear layer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">linear</span> <span class="o">=</span> <span class="n">linear</span>
+        <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">linear</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+            <span class="n">param</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># Add LoRA</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lora</span> <span class="o">=</span> <span class="n">LoRALayer</span><span class="p">(</span>
+            <span class="n">linear</span><span class="o">.</span><span class="n">in_features</span><span class="p">,</span>
+            <span class="n">linear</span><span class="o">.</span><span class="n">out_features</span><span class="p">,</span>
+            <span class="n">rank</span><span class="o">=</span><span class="n">rank</span><span class="p">,</span>
+            <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span>
+            <span class="n">dropout</span><span class="o">=</span><span class="n">dropout</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="c1"># Frozen linear transformation</span>
+        <span class="n">base_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">linear</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="c1"># LoRA adjustment</span>
+        <span class="n">lora_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lora</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">base_out</span> <span class="o">+</span> <span class="n">lora_out</span>
+</code></pre></div>
+
+<h3 id="using-huggingface-peft-library">Using HuggingFace PEFT Library</h3>
+<p>In practice, use the PEFT library for production code:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">transformers</span><span class="w"> </span><span class="kn">import</span> <span class="n">AutoModelForSequenceClassification</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">peft</span><span class="w"> </span><span class="kn">import</span> <span class="n">LoraConfig</span><span class="p">,</span> <span class="n">get_peft_model</span><span class="p">,</span> <span class="n">TaskType</span>
+
+<span class="c1"># Load base model</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">AutoModelForSequenceClassification</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span>
+    <span class="s1">&#39;distilbert-base-uncased&#39;</span><span class="p">,</span>
+    <span class="n">num_labels</span><span class="o">=</span><span class="mi">2</span>
+<span class="p">)</span>
+
+<span class="c1"># Configure LoRA</span>
+<span class="n">lora_config</span> <span class="o">=</span> <span class="n">LoraConfig</span><span class="p">(</span>
+    <span class="n">task_type</span><span class="o">=</span><span class="n">TaskType</span><span class="o">.</span><span class="n">SEQ_CLS</span><span class="p">,</span>
+    <span class="n">r</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>                          <span class="c1"># Rank</span>
+    <span class="n">lora_alpha</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>               <span class="c1"># Scaling factor</span>
+    <span class="n">lora_dropout</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>            <span class="c1"># Dropout for regularization</span>
+    <span class="n">target_modules</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;q_lin&quot;</span><span class="p">,</span> <span class="s2">&quot;v_lin&quot;</span><span class="p">],</span>  <span class="c1"># Apply to Q and V</span>
+    <span class="n">bias</span><span class="o">=</span><span class="s2">&quot;none&quot;</span>                  <span class="c1"># Don&#39;t train bias terms</span>
+<span class="p">)</span>
+
+<span class="c1"># Apply LoRA</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">get_peft_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">lora_config</span><span class="p">)</span>
+
+<span class="c1"># Check trainable parameters</span>
+<span class="n">model</span><span class="o">.</span><span class="n">print_trainable_parameters</span><span class="p">()</span>
+<span class="c1"># Output: trainable params: 49,152 || all params: 66,985,474 || trainable%: 0.07%</span>
+</code></pre></div>
+
+<h3 id="training-configuration">Training Configuration</h3>
+<p><strong>Learning rate:</strong> LoRA typically uses higher learning rates than full fine-tuning.</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">transformers</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrainingArguments</span><span class="p">,</span> <span class="n">Trainer</span>
+
+<span class="n">training_args</span> <span class="o">=</span> <span class="n">TrainingArguments</span><span class="p">(</span>
+    <span class="n">output_dir</span><span class="o">=</span><span class="s2">&quot;./distilbert_lora&quot;</span><span class="p">,</span>
+    <span class="n">num_train_epochs</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+    <span class="n">per_device_train_batch_size</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+    <span class="n">learning_rate</span><span class="o">=</span><span class="mf">3e-4</span><span class="p">,</span>          <span class="c1"># Higher than 2e-5 (typical for full FT)</span>
+    <span class="n">weight_decay</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
+    <span class="n">warmup_steps</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+    <span class="n">logging_steps</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+    <span class="n">eval_strategy</span><span class="o">=</span><span class="s2">&quot;steps&quot;</span><span class="p">,</span>
+    <span class="n">eval_steps</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+    <span class="n">save_strategy</span><span class="o">=</span><span class="s2">&quot;steps&quot;</span><span class="p">,</span>
+    <span class="n">save_steps</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+    <span class="n">load_best_model_at_end</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">fp16</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>                   <span class="c1"># Mixed precision if GPU available</span>
+<span class="p">)</span>
+
+<span class="n">trainer</span> <span class="o">=</span> <span class="n">Trainer</span><span class="p">(</span>
+    <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
+    <span class="n">args</span><span class="o">=</span><span class="n">training_args</span><span class="p">,</span>
+    <span class="n">train_dataset</span><span class="o">=</span><span class="n">train_dataset</span><span class="p">,</span>
+    <span class="n">eval_dataset</span><span class="o">=</span><span class="n">eval_dataset</span><span class="p">,</span>
+    <span class="n">compute_metrics</span><span class="o">=</span><span class="n">compute_metrics</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">trainer</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
+</code></pre></div>
+
+<hr />
+<h2 id="part-8-production-considerations">Part 8: Production Considerations</h2>
+<h3 id="deployment-strategy">Deployment Strategy</h3>
+<p><strong>Multi-task serving:</strong></p>
+<p>One major advantage of LoRA is modular deployment:</p>
+<div class="codehilite"><pre><span></span><code>Base Model (66M params)
+├── Adapter A: Sentiment Analysis (50KB)
+├── Adapter B: News Classification (50KB)
+├── Adapter C: Question Answering (50KB)
+└── Adapter D: Named Entity Recognition (50KB)
+</code></pre></div>
+
+<p><strong>Inference code:</strong></p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">peft</span><span class="w"> </span><span class="kn">import</span> <span class="n">PeftModel</span>
+
+<span class="c1"># Load base model once</span>
+<span class="n">base_model</span> <span class="o">=</span> <span class="n">AutoModelForSequenceClassification</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span>
+    <span class="s1">&#39;distilbert-base-uncased&#39;</span><span class="p">,</span>
+    <span class="n">num_labels</span><span class="o">=</span><span class="mi">2</span>
+<span class="p">)</span>
+
+<span class="c1"># Load different adapters as needed</span>
+<span class="n">model_sentiment</span> <span class="o">=</span> <span class="n">PeftModel</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span>
+    <span class="n">base_model</span><span class="p">,</span>
+    <span class="s1">&#39;./adapters/sentiment&#39;</span>
+<span class="p">)</span>
+
+<span class="n">model_news</span> <span class="o">=</span> <span class="n">PeftModel</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span>
+    <span class="n">base_model</span><span class="p">,</span>
+    <span class="s1">&#39;./adapters/news&#39;</span>
+<span class="p">)</span>
+
+<span class="c1"># Use whichever model is needed</span>
+<span class="n">output</span> <span class="o">=</span> <span class="n">model_sentiment</span><span class="p">(</span><span class="o">**</span><span class="n">inputs</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="merging-weights-optional">Merging Weights (Optional)</h3>
+<p>For maximum inference speed, merge LoRA weights into base model:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Merge LoRA weights into base model</span>
+<span class="n">merged_model</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">merge_and_unload</span><span class="p">()</span>
+
+<span class="c1"># Now you have a standard model (no LoRA overhead)</span>
+<span class="n">merged_model</span><span class="o">.</span><span class="n">save_pretrained</span><span class="p">(</span><span class="s1">&#39;./merged_model&#39;</span><span class="p">)</span>
+</code></pre></div>
+
+<p><strong>Trade-off:</strong><br />
+- ✅ Faster inference (no adapter computation)<br />
+- ❌ Lose modularity (can't swap adapters)<br />
+- ❌ Larger model size per task</p>
+<h3 id="memory-optimization">Memory Optimization</h3>
+<p><strong>Quantization + LoRA (QLoRA):</strong></p>
+<p>Combine 4-bit quantization with LoRA for even greater efficiency:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">transformers</span><span class="w"> </span><span class="kn">import</span> <span class="n">BitsAndBytesConfig</span>
+
+<span class="c1"># 4-bit quantization config</span>
+<span class="n">bnb_config</span> <span class="o">=</span> <span class="n">BitsAndBytesConfig</span><span class="p">(</span>
+    <span class="n">load_in_4bit</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">bnb_4bit_quant_type</span><span class="o">=</span><span class="s2">&quot;nf4&quot;</span><span class="p">,</span>
+    <span class="n">bnb_4bit_compute_dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bfloat16</span><span class="p">,</span>
+    <span class="n">bnb_4bit_use_double_quant</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Load model in 4-bit</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">AutoModelForCausalLM</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span>
+    <span class="s1">&#39;meta-llama/Llama-2-7b-hf&#39;</span><span class="p">,</span>
+    <span class="n">quantization_config</span><span class="o">=</span><span class="n">bnb_config</span><span class="p">,</span>
+    <span class="n">device_map</span><span class="o">=</span><span class="s2">&quot;auto&quot;</span>
+<span class="p">)</span>
+
+<span class="c1"># Apply LoRA to quantized model</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">get_peft_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">lora_config</span><span class="p">)</span>
+</code></pre></div>
+
+<p><strong>Result:</strong> Fine-tune 7B parameter LLM on a single consumer GPU!</p>
+<hr />
+<h2 id="part-9-limitations-and-when-not-to-use-lora">Part 9: Limitations and When NOT to Use LoRA</h2>
+<h3 id="when-lora-underperforms">When LoRA Underperforms</h3>
+<p><strong>1. Very different downstream tasks</strong></p>
+<p>If your downstream task is drastically different from pre-training:<br />
+- Example: Using a language model pre-trained on English text for protein sequence classification<br />
+- LoRA's low-rank constraint may be too restrictive<br />
+- Solution: Use higher rank or full fine-tuning</p>
+<p><strong>2. Small models</strong></p>
+<p>For models with &lt;100M parameters:<br />
+- The base model has limited capacity to begin with<br />
+- LoRA's efficiency gains are less significant<br />
+- May be worth full fine-tuning for best performance</p>
+<p><strong>3. Critical applications</strong></p>
+<p>When you need absolute best performance and have compute budget:<br />
+- Medical diagnosis<br />
+- Financial trading<br />
+- Legal document analysis<br />
+- Full fine-tuning may squeeze out an extra 1-2% accuracy</p>
+<h3 id="comparison-with-alternatives">Comparison with Alternatives</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Params</th>
+<th>Performance</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Full fine-tuning</strong></td>
+<td>100%</td>
+<td>Highest</td>
+<td>Critical apps, small models</td>
+</tr>
+<tr>
+<td><strong>LoRA (r=8)</strong></td>
+<td>0.1-1%</td>
+<td>95-99% of full FT</td>
+<td>Most production use cases</td>
+</tr>
+<tr>
+<td><strong>Adapter layers</strong></td>
+<td>2-4%</td>
+<td>Similar to LoRA</td>
+<td>Sequential processing</td>
+</tr>
+<tr>
+<td><strong>Prefix tuning</strong></td>
+<td>0.01-0.1%</td>
+<td>Lower than LoRA</td>
+<td>Extreme efficiency needs</td>
+</tr>
+<tr>
+<td><strong>Prompt tuning</strong></td>
+<td>~0.001%</td>
+<td>Lower than LoRA</td>
+<td>Simple classification</td>
+</tr>
+<tr>
+<td><strong>Last layer only</strong></td>
+<td>&lt;0.01%</td>
+<td>Much lower</td>
+<td>Quick baselines</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="part-10-advanced-topics">Part 10: Advanced Topics</h2>
+<h3 id="multi-task-lora">Multi-Task LoRA</h3>
+<p>Train different LoRA adapters for different tasks on the same base model:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Task 1: Sentiment</span>
+<span class="n">lora_sentiment</span> <span class="o">=</span> <span class="n">LoRALayer</span><span class="p">(</span><span class="mi">768</span><span class="p">,</span> <span class="mi">768</span><span class="p">,</span> <span class="n">rank</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+
+<span class="c1"># Task 2: NER</span>
+<span class="n">lora_ner</span> <span class="o">=</span> <span class="n">LoRALayer</span><span class="p">(</span><span class="mi">768</span><span class="p">,</span> <span class="mi">768</span><span class="p">,</span> <span class="n">rank</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+
+<span class="c1"># Forward pass chooses which adapter</span>
+<span class="k">if</span> <span class="n">task</span> <span class="o">==</span> <span class="s2">&quot;sentiment&quot;</span><span class="p">:</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="n">base_model</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">+</span> <span class="n">lora_sentiment</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+<span class="k">elif</span> <span class="n">task</span> <span class="o">==</span> <span class="s2">&quot;ner&quot;</span><span class="p">:</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="n">base_model</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">+</span> <span class="n">lora_ner</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="mixture-of-lora-experts">Mixture of LoRA Experts</h3>
+<p>Combine multiple LoRA adapters with learned weights:</p>
+<div class="codehilite"><pre><span></span><code>output = base_model(x) + Σᵢ wᵢ · LoRAᵢ(x)
+</code></pre></div>
+
+<p>where wᵢ are learned routing weights.</p>
+<h3 id="lora-for-diffusion-models">LoRA for Diffusion Models</h3>
+<p>LoRA extends beyond language models:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">diffusers</span><span class="w"> </span><span class="kn">import</span> <span class="n">StableDiffusionPipeline</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">peft</span><span class="w"> </span><span class="kn">import</span> <span class="n">LoraConfig</span>
+
+<span class="c1"># Load Stable Diffusion</span>
+<span class="n">pipe</span> <span class="o">=</span> <span class="n">StableDiffusionPipeline</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span>
+    <span class="s2">&quot;runwayml/stable-diffusion-v1-5&quot;</span>
+<span class="p">)</span>
+
+<span class="c1"># Apply LoRA to UNet</span>
+<span class="n">lora_config</span> <span class="o">=</span> <span class="n">LoraConfig</span><span class="p">(</span>
+    <span class="n">r</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+    <span class="n">lora_alpha</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+    <span class="n">target_modules</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;to_q&quot;</span><span class="p">,</span> <span class="s2">&quot;to_v&quot;</span><span class="p">]</span>
+<span class="p">)</span>
+
+<span class="n">pipe</span><span class="o">.</span><span class="n">unet</span> <span class="o">=</span> <span class="n">get_peft_model</span><span class="p">(</span><span class="n">pipe</span><span class="o">.</span><span class="n">unet</span><span class="p">,</span> <span class="n">lora_config</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Fine-tune for specific artistic styles with minimal storage!</p>
+<hr />
+<h2 id="conclusion-why-lora-matters">Conclusion: Why LoRA Matters</h2>
+<p>LoRA represents a fundamental insight: <strong>adaptation doesn't require full-model retraining</strong>. By recognizing that weight updates during fine-tuning lie in a low-dimensional subspace, LoRA achieves remarkable parameter efficiency.</p>
+<p><strong>Key takeaways:</strong></p>
+<ol>
+<li><strong>Mathematical elegance:</strong> Low-rank matrix decomposition captures most adaptation with minimal parameters</li>
+<li><strong>Practical impact:</strong> Train 0.1-1% of parameters, achieve 95-99% of full fine-tuning performance</li>
+<li><strong>Production benefits:</strong> One base model + many lightweight adapters enable efficient multi-task serving</li>
+<li><strong>Future-proof:</strong> Extends to any architecture (transformers, diffusion models, vision models)</li>
+</ol>
+<p><strong>Where to go from here:</strong></p>
+<ul>
+<li><strong>Implement it:</strong> Use the notebook from this post to try LoRA on your own data</li>
+<li><strong>Experiment with rank:</strong> Find the optimal r for your task</li>
+<li><strong>Explore QLoRA:</strong> Combine with quantization for even greater efficiency</li>
+<li><strong>Multi-task learning:</strong> Deploy one model serving many tasks</li>
+</ul>
+<p>The democratization of AI requires techniques like LoRA that make powerful models accessible without massive compute budgets. Whether you're a researcher, engineer, or hobbyist, LoRA puts state-of-the-art fine-tuning within reach.</p>
+<hr />
+<h2 id="references">References</h2>
+<ol>
+<li>
+<p>Hu, E. J., Shen, Y., Wallis, P., Allen-Zhu, Z., Li, Y., Wang, S., ... &amp; Chen, W. (2021). LoRA: Low-Rank Adaptation of Large Language Models. <em>arXiv preprint arXiv:2106.09685</em>.</p>
+</li>
+<li>
+<p>Dettmers, T., Pagnoni, A., Holtzman, A., &amp; Zettlemoyer, L. (2023). QLoRA: Efficient Finetuning of Quantized LLMs. <em>arXiv preprint arXiv:2305.14314</em>.</p>
+</li>
+<li>
+<p>Sanh, V., Debut, L., Chaumond, J., &amp; Wolf, T. (2019). DistilBERT, a distilled version of BERT: smaller, faster, cheaper and lighter. <em>arXiv preprint arXiv:1910.01108</em>.</p>
+</li>
+<li>
+<p>Golub, G. H., &amp; Van Loan, C. F. (2013). <em>Matrix computations</em> (4th ed.). Johns Hopkins University Press.</p>
+</li>
+</ol>
+<hr />
+<h2 id="code-repository">Code Repository</h2>
+<p>Full implementation and experiments: <a href="https://github.com/saharbanisafar/lora-deep-dive">github.com/saharbanisafar/lora-deep-dive</a></p>
+<p>Colab notebook: <a href="https://colab.research.google.com/...">Open in Colab</a></p>
+<hr />
+<p><em>Sahar Banisafar is a data scientist with a mathematics background and 6 years of production ML experience. She writes about the mathematics behind modern machine learning at <a href="https://banisafar.com">banisafar.com</a>.</em></p>
+</body>
+</html>

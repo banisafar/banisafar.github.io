@@ -12,9 +12,12 @@ body {
     font-size: 16px;
 }
 
+
+
+
 header {
     border-bottom: 1px solid #e5e5e5;
-    padding: 2rem 0 1rem;
+    padding: 4rem 0 2rem;
     background: #ffffff;
     text-align: center;
     position: relative;
@@ -57,6 +60,36 @@ header {
 }
 
 
+
+.intro-nav {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+    margin-top: 2rem;
+}
+
+.intro-button {
+    font-family: 'Libre Franklin', sans-serif;  /* ADD THIS */
+    font-weight: 400;                            /* ADD THIS */
+    text-decoration: none;
+    color: #666;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    transition: color 0.2s;
+}
+
+.intro-button:hover {
+    color: #1a1a1a;
+}
+
+
+
+
+
+
+
+
 .iico {
     width: 35px;
     height: 35px;
@@ -72,11 +105,14 @@ header {
 }
 
 .profile-info h1 {
+    font-family: 'Libre Franklin', sans-serif;
     font-size: 2rem;
-    font-weight: 400;
+    font-weight: 700;  /* or try 800 for extra bold */
+    letter-spacing: -0.02em;
     margin-bottom: 0.5rem;
     color: #1a1a1a;
 }
+
 
 .profile-info p {
     font-size: 1rem;
@@ -88,6 +124,7 @@ header {
 .social-links {
     display: flex;
     gap: 1rem;
+    justify-content: center;  /* ADD THIS */
 }
 
 .social-links a {
@@ -133,12 +170,13 @@ nav a:hover {
 .intro {
     max-width: 900px;
     margin: 0 auto;
-    padding: 3rem 2rem 2rem;
+    padding: 5rem 2rem 2rem;
 }
 
 .intro h2 {
+    font-family: 'Libre Franklin', sans-serif;  /* Make sure this line is here */
     font-size: 1.5rem;
-    font-weight: 400;
+    font-weight: 500;                 /*play with this?*/
     margin-bottom: 1rem;
     color: #1a1a1a;
 }
@@ -178,6 +216,26 @@ main {
     display: block;
     transition: color 0.2s;
 }
+/*
+debating between these - COME HERE
+.post-title {
+    font-family: 'Libre Franklin', sans-serif;  
+    font-size: 1.5rem;
+    font-weight: 600;                            
+    margin-bottom: 0.75rem;
+    color: #1a1a1a;
+    text-decoration: none;
+    display: block;
+    transition: color 0.2s;
+}
+
+*/
+
+
+
+
+
+
 
 .post-title:hover {
     color: #667eea;
@@ -240,6 +298,7 @@ footer a:hover {
     }
 
     .intro h2 {
+
         font-size: 1.25rem;
     }
 
