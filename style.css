@@ -262,8 +262,11 @@ debating between these - COME HERE
 }
 
 .tag {
-    background: #e0e7ff;
-    color: #667eea;
+    /*background: #e0e7ff;
+    color: #667eea;*/
+    background: #d5f9e9;  /* CHANGE: MoMA mint background */
+    color: #8e045f;       /* CHANGE: MoMA plum text */
+    border: 1px solid #c1e0d3;
     padding: 0.25rem 0.75rem;
     border-radius: 3px;
     font-size: 0.8rem;
@@ -317,5 +320,9 @@ footer a:hover {
     .post-meta {
         flex-direction: column;
         gap: 0.5rem;
+        align-items: flex-start; 
+    }
+    .tag {
+        align-self: flex-start;  /* ADD THIS */
     }
 }
