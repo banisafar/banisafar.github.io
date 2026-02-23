@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A technical exploration of LoRA (Low-Rank Adaptation) for efficient LLM fine-tuning. Covers mathematical foundations, parameter efficiency tradeoffs, and experiments showing LoRA matching full fine-tuning with less than 2% of trainable parameters.">
+    <meta name="author" content="Sahar Banisafar">
+    
+    <!-- Open Graph / Social -->
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://banisafar.com/lora.html">
+    <meta property="og:title" content="LoRA: Low-Rank Adaptation for Efficient Fine-Tuning">
+    <meta property="og:description" content="A technical exploration of LoRA with mathematical foundations and experimental results showing 98% parameter reduction.">
+    
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://banisafar.com/lora.html">
+    <meta property="twitter:title" content="LoRA: Low-Rank Adaptation for Efficient Fine-Tuning">
+    <meta property="twitter:description" content="A technical exploration of LoRA with mathematical foundations and experimental results showing 98% parameter reduction.">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <title>LoRA: Low-Rank Adaptation for Efficient Fine-Tuning</title>
+    
+    <!-- Math rendering -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <!-- Syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            font-size: 18px;
+            line-height: 1.7;
+            color: #333;
+            background: #fff;
+        }
+        
+        header {
+            border-bottom: 1px solid #e0e0e0;
+            padding: 20px 0;
+            margin-bottom: 40px;
+        }
+        
+        .simple-header {
+            max-width: 750px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .site-name {
+            font-family: 'Libre Franklin', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: #333;
+            text-decoration: none;
+        }
+        
+        .site-name:hover {
+            color: #0066cc;
+        }
+        
+        header nav {
+            display: flex;
+            gap: 20px;
+        }
+        
+        header nav a {
+            color: #666;
+            text-decoration: none;
+            font-size: 16px;
+        }
+        
+        header nav a:hover {
+            color: #0066cc;
+        }
+        
+        main {
+            max-width: 750px;
+            margin: 0 auto;
+            padding: 0 20px 80px;
+        }
+        
+        h1 {
+            font-family: 'Libre Franklin', sans-serif;
+            font-size: 2.2em;
+            font-weight: 600;
+            margin-bottom: 0.3em;
+            line-height: 1.2;
+        }
+        
+        .subtitle {
+            font-style: italic;
+            color: #666;
+            margin-bottom: 2em;
+        }
+        
+        h2 {
+            font-family: 'Libre Franklin', sans-serif;
+            font-size: 1.6em;
+            font-weight: 600;
+            margin-top: 2em;
+            margin-bottom: 0.8em;
+            padding-bottom: 0.4em;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        h3 {
+            font-family: 'Libre Franklin', sans-serif;
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-top: 1.5em;
+            margin-bottom: 0.6em;
+        }
+        
+        p {
+            margin-bottom: 1.2em;
+        }
+        
+        strong {
+            font-weight: 600;
+        }
+        
+        em {
+            font-style: italic;
+        }
+        
+        a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        code {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+        
+        pre {
+            background: #f5f5f5;
+            padding: 16px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 1.5em 0;
+            border: 1px solid #e0e0e0;
+        }
+        
+        pre code {
+            background: none;
+            padding: 0;
+        }
+        
+        ul, ol {
+            margin-left: 2em;
+            margin-bottom: 1.2em;
+        }
+        
+        li {
+            margin-bottom: 0.5em;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5em 0;
+            font-size: 0.95em;
+        }
+        
+        th, td {
+            padding: 10px 12px;
+            text-align: left;
+            border: 1px solid #e0e0e0;
+        }
+        
+        th {
+            background: #f5f5f5;
+            font-weight: 600;
+        }
+        
+        tr:nth-child(even) {
+            background: #fafafa;
+        }
+        
+        figure {
+            margin: 2em 0;
+            text-align: center;
+        }
+        
+        figure img {
+            max-width: 100%;
+            height: auto;
+        }
+        
+        figcaption {
+            margin-top: 0.8em;
+            font-size: 0.95em;
+            color: #666;
+            font-style: italic;
+        }
+        
+        hr {
+            border: none;
+            border-top: 1px solid #e0e0e0;
+            margin: 2em 0;
+        }
+        
+        .toc {
+            background: #f5f5f5;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 20px 24px;
+            margin: 2em 0;
+        }
+        
+        .toc h2 {
+            font-size: 1.2em;
+            margin: 0 0 0.8em 0;
+            border: none;
+            padding: 0;
+        }
+        
+        .toc ul {
+            margin: 0;
+            list-style-position: inside;
+        }
+        
+        .toc li {
+            margin-bottom: 0.4em;
+        }
+        
+        .author-note {
+            margin-top: 3em;
+            padding-top: 2em;
+            border-top: 1px solid #e0e0e0;
+            font-style: italic;
+            color: #666;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                font-size: 17px;
+            }
+            
+            .simple-header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+            
+            h1 {
+                font-size: 1.8em;
+            }
+            
+            h2 {
+                font-size: 1.4em;
+            }
+            
+            h3 {
+                font-size: 1.2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="simple-header">
+            <a href="index.html" class="site-name">Sahar Banisafar</a>
+            <nav>
+                <a href="index.html">Home</a>
+                <a href="index.html#about">About</a>
+                <a href="index.html#cv">Resume</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <h1>LoRA: Parameter-Efficient Fine-Tuning Explained</h1>
+        <p class="subtitle">A deep dive into low-rank parameter-efficient fine-tuning</p>
+
+        <nav class="toc">
+            <h2>Contents</h2>
+            <ul>
+                <li><a href="#landscape">The Fine-Tuning Landscape</a></li>
+                <li><a href="#lora">LoRA: Low-Rank Adaptation</a></li>
+                <li><a href="#code">Practical Example: LoRA Fine-Tuning on IMDB</a></li>
+            </ul>
+        </nav>
+
+        <h2 id="landscape">The Fine-Tuning Landscape</h2>
+
+        <p>In the era of large language models, adapting these models to downstream applications has become common practice through fine-tuning. While the focus of this post is LoRA, it's important to see where it falls in the bigger picture of fine-tuning approaches.</p>
+        
+        <figure>
+            <img src="fig1.png" alt="Fine-tuning techniques overview">
+            <figcaption><strong>Figure 1:</strong> Overview of different fine-tuning techniques</figcaption>
+        </figure>
+        
+        <h3>Full Fine-Tuning</h3>
+        <p>When models were small enough (hundreds of thousands to a few million parameters), full fine-tuning was the standard approach. All parameters in the pretrained model would be updated during training. As model sizes grew to hundreds of billions and even trillions of parameters, this approach became prohibitively expensive in terms of compute, memory, and time, making it inaccessible to most practitioners.</p>
+        
+        <h3>Selective Fine-Tuning</h3>
+        <p>A natural next step: freeze most layers and fine-tune only a subset. For instance, in a 10-layer model, you might freeze the first eight layers and fine-tune only the last two, reducing training to just 20% of the parameters. However, empirical results showed this approach was insufficient. Houlsby et al. (2019) found that for BERT-Large, you'd still need to fine-tune approximately 25% of the model to achieve performance comparable to full fine-tuning. With BERT-Large's 340 million parameters, that still means updating 85 million parameters—inefficient and not a complete solution to the compute and memory problem.</p>
+
+        <h3>Additive Fine-Tuning</h3>
+        <p>The question now becomes: <strong>How can we achieve near-full-fine-tuning performance while training orders of magnitude fewer parameters?</strong></p>
+        
+        <p>This motivated the development of parameter-efficient fine-tuning (PEFT) methods. Houlsby et al. (2019) introduced <strong>adapter layers</strong>—small trainable modules inserted into the frozen base model. In transformers, adapter modules are inserted after the self-attention and feed-forward sublayers. The adapter architecture consists of a down-projection (to reduce dimensionality), a non-linear activation function, and an up-projection (to restore dimensionality). Only these adapter parameters are trained.</p>
+        
+        <p>This approach achieved performance within 0.4% of full fine-tuning while training only 3% of the model's parameters. However, adapter layers introduce a critical drawback: increased inference latency. Because of these additional layers, inference requires extra computation in each forward pass—problematic in production systems where low latency is crucial.</p>
+        
+        <p>There's another class of additive techniques worth mentioning: soft prompting methods such as prefix tuning or prompt tuning. These modify how the model processes input rather than the architecture itself. We focus on adapters here because they lead most directly to LoRA.</p>
+        
+        <p>It's also worth noting that PEFT methods are not only parameter-efficient but also sample-efficient, achieving strong performance with just a few thousand training examples—practical for low-resource settings.</p>
+
+        <h3>Reparameterization Fine-Tuning</h3>
+        <p>With trainable parameters successfully reduced by orders of magnitude, the next challenge was addressing the increased inference time.</p>
+        
+        <p>Reparameterization methods introduce additional low-rank trainable parameters during training. The key difference from adapters: these parameters can be <strong>merged back into the original weights</strong> at inference time, preserving the base model's architecture. This results in no extra layers, no additional computation, no inference overhead.</p>
+
+        <p>The theoretical groundwork came from Aghajanyan et al. (2020), who showed in "Intrinsic Dimensionality Explains the Effectiveness of Language Model Fine-Tuning" that common pretrained models have low intrinsic dimensionality. In other words, the weight updates needed during fine-tuning occupy a surprisingly low-dimensional subspace of the full parameter space. If the updates live in a small subspace, we don't need full-rank matrices to represent them.</p>
+        
+        <p>This insight opened the door to LoRA and the family of reparameterization methods that followed, including variants like DyLoRA and DoRA. Our focus here remains on the original.</p>
+
+        <h2 id="lora">LoRA: Low-Rank Adaptation</h2>
+
+        <p>Now that we've seen how reparameterization methods address the adapter latency problem, let's examine how LoRA specifically implements this approach.</p>
+
+        <p>Introduced by Hu et al. (2021), LoRA was originally applied to transformers but works on any architecture with learnable weight matrices.</p>
+
+        <p>For a pretrained weight matrix W₀ ∈ ℝ<sup>m×n</sup>, we want to learn a matrix ΔW ∈ ℝ<sup>m×n</sup>. Think of ΔW as incrementally updating the output to encapsulate task-specific knowledge:</p>
+
+        <p style="text-align: center; margin: 2em 0;">
+        $$W' = W_0 + \frac{\alpha}{r} \Delta W$$
+        </p>
+        
+        <p>Here's the key insight: weight updates during fine-tuning have low intrinsic rank. Even though W₀ is a large matrix, the task-specific changes (ΔW) lie in a much smaller subspace.</p>
+
+        <p>LoRA exploits this by decomposing ΔW into two low-rank matrices:</p>
+
+        <p style="text-align: center; margin: 2em 0;">
+        $$\Delta W = BA$$
+        </p>
+
+        <h3>Why Does Low-Rank Decomposition Work?</h3>
+
+        <p>Pretrained models have already learned rich representations from massive datasets. Fine-tuning doesn't relearn everything—it makes targeted adjustments along a small number of key directions. Think of it like learning Portuguese when you already speak Spanish: you adjust pronunciation, some vocabulary, and certain grammatical patterns while keeping most of your language knowledge intact. Similarly, fine-tuning adjusts pretrained weights along a low-dimensional subspace rather than requiring full-rank changes across all dimensions.</p>
+
+        <p>Empirically, the LoRA paper found that even r=1 or r=2 often suffice for effective adaptation on GPT-3, demonstrating that task-specific adaptation truly occupies a low-dimensional subspace.</p>
+        
+        <p>The decomposition uses:</p>
+        <ul>
+            <li><strong>B</strong> ∈ ℝ<sup>m×r</sup></li>
+            <li><strong>A</strong> ∈ ℝ<sup>r×n</sup></li>
+            <li><strong>r</strong> ≪ min(m,n) is the rank</li>
+        </ul>
+
+        <figure>
+            <img src="fig3.png" alt="LoRA Architecture">
+            <figcaption><strong>Figure 2:</strong> LoRA decomposes weight updates into low-rank matrices A and B. The pretrained weight matrix W₀ remains frozen while the update ΔW = BA is learned. After training, these merge into a single matrix W' = W₀ + BA with no inference overhead.</figcaption>
+        </figure>
+        
+        <p>Instead of learning the full m×n matrix ΔW, we only train the smaller matrices B and A. This decomposition is what allows us to train such few parameters.</p>
+
+        <p>Let's look at a concrete example with a 768×768 weight matrix:</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Method</th>
+                    <th>Calculation</th>
+                    <th>Parameters</th>
+                    <th>Reduction</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Full ΔW (d=768)</td>
+                    <td>768 × 768</td>
+                    <td>589,824</td>
+                    <td>—</td>
+                </tr>
+                <tr>
+                    <td>LoRA (r=8)</td>
+                    <td>(768 × 8) + (8 × 768)</td>
+                    <td>12,288</td>
+                    <td>98%</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>A 98% reduction in trainable parameters.</p>
+
+        <h3>Initialization</h3>
+        <p>Matrix A is initialized with random Gaussian values, while B is initialized to zero. This ensures that at the start of training, ΔW = BA = 0, so the model begins identical to its pretrained state. As training progresses, B learns to scale and combine the features from A.</p>
+
+        <h3>Target Matrices in Transformers</h3>
+        <p>LoRA is typically applied to the weight matrices in attention layers:</p>
+        <ul>
+            <li>W<sub>Q</sub> (query projection)</li>
+            <li>W<sub>K</sub> (key projection)</li>
+            <li>W<sub>V</sub> (value projection)</li>
+            <li>W<sub>O</sub> (output projection)</li>
+        </ul>
+
+        <p>The original paper found that applying LoRA to just W<sub>Q</sub> and W<sub>V</sub> gives the best performance-to-parameter tradeoff. You can extend to feed-forward layers (FFN) for improved performance at the cost of more trainable parameters—as shown in our experiments below.</p>
+
+        <h3>The Scaling Factor</h3>
+        <p>The scaling factor α/r controls the magnitude of the update. A common heuristic is to set α = 2r, which keeps the effective learning rate stable across different ranks. In our experiments, we used this approach consistently.</p>
+
+        <h3>Merging for Deployment</h3>
+        <p>After training, the LoRA matrices are merged back into the original weights:</p>
+
+        <p style="text-align: center; margin: 2em 0;">
+        $$W_{merged} = W_0 + \frac{\alpha}{r}BA$$
+        </p>
+
+        <p>This merged weight is a standard matrix—no special inference code needed. The model has identical architecture and speed to the base model, with zero computational overhead. This is LoRA's key advantage over adapter layers.</p>
+
+        <h2 id="code">Practical Example: LoRA Fine-Tuning on IMDB</h2>
+
+        <p>To see LoRA in action, I fine-tuned DistilBERT on the IMDB sentiment classification task using HuggingFace's PEFT library. The full implementation is available in my <a href="https://github.com/yourusername/lora-experiments">GitHub repository</a>.</p>
+
+        <h3>Setup</h3>
+
+        <p>I used the full IMDB dataset: 25,000 training examples and 25,000 test examples, balanced 50/50 between positive and negative sentiment. All experiments ran on Google Colab Pro with an NVIDIA A100 GPU.</p>
+
+        <h3>Configuration</h3>
+
+        <p>Here's the core LoRA setup:</p>
+
+        <pre><code class="language-python">from peft import LoraConfig, get_peft_model, TaskType
+
+# Configure LoRA
+lora_config = LoraConfig(
+    task_type=TaskType.SEQ_CLS,       # Sequence classification
+    r=8,                               # Rank of decomposition
+    lora_alpha=16,                     # Scaling factor (2*r)
+    lora_dropout=0.1,                  # Regularization
+    target_modules=["q_lin", "v_lin"], # Apply to Q and V matrices
+    bias="none",
+)
+
+# Apply LoRA to the model
+model = get_peft_model(model, lora_config)
+model.print_trainable_parameters()
+# trainable params: 739,586 || all params: 67,694,596 || trainable%: 1.10%
+</code></pre>
+
+        <p>With just these few lines, we've converted a standard DistilBERT model (67M parameters) into one where only 740K parameters (1.10%) need to be trained.</p>
+
+        <h3>Experiments</h3>
+
+        <p>I tested six configurations to understand the impact of rank and target module selection:</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Configuration</th>
+                    <th>Trainable Params</th>
+                    <th>Trainable %</th>
+                    <th>Accuracy</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Classification Head Only</td>
+                    <td>1,538</td>
+                    <td>0.00%</td>
+                    <td>82.18%</td>
+                </tr>
+                <tr>
+                    <td>Q+V (r=4)</td>
+                    <td>665,858</td>
+                    <td>0.99%</td>
+                    <td>92.28%</td>
+                </tr>
+                <tr>
+                    <td>Q+V (r=8)</td>
+                    <td>739,586</td>
+                    <td>1.10%</td>
+                    <td>92.48%</td>
+                </tr>
+                <tr>
+                    <td>Q+V (r=16)</td>
+                    <td>887,042</td>
+                    <td>1.32%</td>
+                    <td>92.67%</td>
+                </tr>
+                <tr>
+                    <td>All Attention (r=8)</td>
+                    <td>887,042</td>
+                    <td>1.32%</td>
+                    <td>93.00%</td>
+                </tr>
+                <tr style="background: #e8f5ee;">
+                    <td><strong>All Attention+FFN (r=8)</strong></td>
+                    <td><strong>1,255,682</strong></td>
+                    <td><strong>1.88%</strong></td>
+                    <td><strong>93.32%</strong></td>
+                </tr>
+                <tr>
+                    <td>Full Fine-Tuning</td>
+                    <td>66,955,010</td>
+                    <td>100.00%</td>
+                    <td>93.26%</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p style="margin-top: 1rem; font-size: 0.9em; color: #666;">
+            <em>All experiments on NVIDIA A100 GPU with full IMDB dataset (25K train, 25K test).</em>
+        </p>
+
+        <h3>Key Findings</h3>
+
+        <p><strong>Rank shows diminishing returns:</strong></p>
+        <ul>
+            <li>r=4: 92.28% accuracy with 666K parameters (0.99%)</li>
+            <li>r=8: 92.48% accuracy with 740K parameters (1.10%)</li>
+            <li>r=16: 92.67% accuracy with 887K parameters (1.32%)</li>
+        </ul>
+
+        <p>Each doubling of rank provides smaller gains (~0.2% improvement), suggesting r=8 offers the best tradeoff for Q+V configurations.</p>
+
+        <p><strong>Target module selection matters:</strong></p>
+        <p>With similar parameter budgets (~887K), All Attention (r=8) achieved 93.00% compared to Q+V (r=16) at 92.67%—a meaningful 0.33% improvement from adding key and output projections.</p>
+
+        <p><strong>Feed-forward layers provide the largest boost:</strong></p>
+        <p>Extending LoRA to FFN layers (All Attention+FFN, r=8) achieved 93.32% accuracy—matching full fine-tuning's 93.26%—while training only 1.88% of parameters. This represents a 98% reduction in trainable parameters with zero accuracy loss.</p>
+
+        <p><strong>Classification head alone is insufficient:</strong></p>
+        <p>Training only the classification head (1.5K parameters) achieved just 82.18% accuracy. Even the smallest LoRA configuration (Q+V r=4) dramatically outperformed this baseline with 10% higher accuracy.</p>
+
+        <h3>The Sweet Spot</h3>
+
+        <p>Based on our experiments and the LoRA paper:</p>
+        <ul>
+            <li><strong>r=4:</strong> Very efficient, good for resource-constrained settings</li>
+            <li><strong>r=8:</strong> Sweet spot for most tasks, balances efficiency and performance</li>
+            <li><strong>r=16 or higher:</strong> Diminishing returns, use only if maximizing accuracy</li>
+        </ul>
+
+        <p>For this classification task, <strong>Q+V with r=8</strong> offers an excellent tradeoff: 92.48% accuracy with only 1.10% of parameters trainable. For applications requiring maximum performance, extending LoRA to feed-forward layers (All Attention+FFN with r=8) matches full fine-tuning while still using less than 2% of trainable parameters.</p>
+
+        <h3>Implementation Notes</h3>
+
+        <ul>
+            <li><strong>Learning rate:</strong> LoRA worked well with a higher learning rate (3e-4) compared to full fine-tuning (2e-5)</li>
+            <li><strong>Training efficiency:</strong> All LoRA configurations trained in 3-6 minutes on an A100 GPU</li>
+            <li><strong>Merging:</strong> After training, the LoRA matrices can be merged back into the original weights for zero-overhead inference</li>
+        </ul>
+
+        <p>The full training code, including data preprocessing and evaluation, is available on <a href="https://github.com/yourusername/lora-experiments">GitHub</a>.</p>
+
+        <h2>Conclusion</h2>
+
+        <p>LoRA demonstrates that effective fine-tuning doesn't require updating all model parameters. By exploiting the low intrinsic rank of weight updates, LoRA achieves near-full-fine-tuning performance while training less than 2% of parameters—with zero inference overhead. For practitioners working with large language models, LoRA has become the default fine-tuning approach, offering an optimal balance of efficiency, performance, and deployment simplicity.</p>
+
+        <hr>
+
+        <h2>References</h2>
+        <p>Hu, E. J., Shen, Y., Wallis, P., Allen-Zhu, Z., Li, Y., Wang, S., ... & Chen, W. (2021). LoRA: Low-Rank Adaptation of Large Language Models. <em>arXiv preprint arXiv:2106.09685</em>.</p>
+
+        <p>Houlsby, N., Giurgiu, A., Jastrzebski, S., Morrone, B., De Laroussilhe, Q., Gesmundo, A., ... & Gelly, S. (2019). Parameter-efficient transfer learning for NLP. <em>International Conference on Machine Learning</em>, 2790-2799.</p>
+
+        <p>Aghajanyan, A., Zettlemoyer, L., & Gupta, S. (2020). Intrinsic dimensionality explains the effectiveness of language model fine-tuning. <em>arXiv preprint arXiv:2012.13255</em>.</p>
+
+        <p class="author-note">Sahar Banisafar is a data scientist with a mathematics background and 6 years of production ML experience. She writes about the intersection of theory and practice in modern machine learning.</p>
+    </main>
+</body>
+</html>
