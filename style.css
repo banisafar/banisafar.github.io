@@ -146,6 +146,11 @@ header {
     background: #666;
 }
 
+.social-links i {
+    font-size: 23px;           /* Icon size inside circle */
+}
+
+
 nav {
     position: absolute;  /* ADD THIS */
     top: 2rem;          /* ADD THIS */
@@ -234,11 +239,8 @@ debating between these - COME HERE
 
 
 
-
-
-
 .post-title:hover {
-    color: #667eea;
+    color:  #8e045f;
 }
 
 .post-excerpt {
@@ -260,6 +262,45 @@ debating between these - COME HERE
     align-items: center;
     gap: 0.5rem;
 }
+
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 2rem 0;
+}
+
+th {
+    background: #f5f5f5;
+    padding: 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #ddd;
+}
+
+td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #eee;
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 .tag {
     /*background: #e0e7ff;
