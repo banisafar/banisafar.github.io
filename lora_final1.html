@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="A technical exploration of LoRA (Low-Rank Adaptation) for efficient fine-tuning. Covers mathematical foundations, parameter efficiency tradeoffs, and experiments showing LoRA matching full fine-tuning with less than 2% of trainable parameters.">
+    <meta name="description" content="A technical exploration of LoRA (Low-Rank Adaptation) for efficient LLM fine-tuning. Covers mathematical foundations, parameter efficiency tradeoffs, and experiments showing LoRA matching full fine-tuning with less than 2% of trainable parameters.">
     <meta name="author" content="Sahar Banisafar">
     
     <!-- Open Graph / Social -->
@@ -245,17 +245,6 @@
             margin-bottom: 0.4em;
         }
         
-        .notebook-badges {
-            margin: 1.5em 0;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-        
-        .notebook-badges img {
-            height: 20px;
-        }
-        
         .author-note {
             margin-top: 3em;
             padding-top: 2em;
@@ -285,11 +274,6 @@
             
             h3 {
                 font-size: 1.2em;
-            }
-            
-            .notebook-badges {
-                flex-direction: column;
-                align-items: flex-start;
             }
         }
     </style>
@@ -332,18 +316,18 @@
         <p>When models were small enough (hundreds of thousands to a few million parameters), full fine-tuning was the standard approach. All parameters in the pretrained model would be updated during training. As model sizes grew to hundreds of billions and even trillions of parameters, this approach became prohibitively expensive in terms of compute, memory, and time, making it inaccessible to most practitioners.</p>
         
         <h3>Selective Fine-Tuning</h3>
-        <p>A natural next step: freeze most layers and fine-tune only a subset. For instance, in a 10-layer model, you might freeze the first eight layers and fine-tune only the last two, reducing training to just 20% of the parameters. However, empirical results showed this approach was insufficient. Houlsby et al. (2019) found that for BERT-Large, you'd still need to fine-tune approximately 25% of the model to achieve performance comparable to full fine-tuning. With BERT-Large's 340 million parameters, that still means updating 85 million parameters. Fine-tuning just the top layers is inefficient and doesn't fully solve the compute and memory problem.</p>
+        <p>A natural next step: freeze most layers and fine-tune only a subset. For instance, in a 10-layer model, you might freeze the first eight layers and fine-tune only the last two, reducing training to just 20% of the parameters. However, empirical results showed this approach was insufficient. Houlsby et al. (2019) found that for BERT-Large, you'd still need to fine-tune approximately 25% of the model to achieve performance comparable to full fine-tuning. With BERT-Large's 340 million parameters, that still means updating 85 million parameters—inefficient and not a complete solution to the compute and memory problem.</p>
 
         <h3>Additive Fine-Tuning</h3>
         <p>The question now becomes: <strong>How can we achieve near-full-fine-tuning performance while training orders of magnitude fewer parameters?</strong></p>
         
-        <p>This motivated the development of parameter-efficient fine-tuning (PEFT) methods. Houlsby et al. (2019) introduced <strong>adapter layers</strong>- small trainable modules inserted into the frozen base model. In transformers, adapter modules are inserted after the self-attention and feed-forward sublayers. The adapter architecture consists of a down-projection (to reduce dimensionality), a non-linear activation function, and an up-projection (to restore dimensionality). Only these adapter parameters are trained.</p>
+        <p>This motivated the development of parameter-efficient fine-tuning (PEFT) methods. Houlsby et al. (2019) introduced <strong>adapter layers</strong>—small trainable modules inserted into the frozen base model. In transformers, adapter modules are inserted after the self-attention and feed-forward sublayers. The adapter architecture consists of a down-projection (to reduce dimensionality), a non-linear activation function, and an up-projection (to restore dimensionality). Only these adapter parameters are trained.</p>
         
-        <p>This approach achieved performance within 0.4% of full fine-tuning while training only 3% of the model's parameters. However, adapter layers introduce a critical drawback: increased inference latency. Because of these additional layers, inference requires extra computation in each forward pass. This is problematic in production systems where low latency is crucial.</p>
+        <p>This approach achieved performance within 0.4% of full fine-tuning while training only 3% of the model's parameters. However, adapter layers introduce a critical drawback: increased inference latency. Because of these additional layers, inference requires extra computation in each forward pass—problematic in production systems where low latency is crucial.</p>
         
         <p>There's another class of additive techniques worth mentioning: soft prompting methods such as prefix tuning or prompt tuning. These modify how the model processes input rather than the architecture itself. We focus on adapters here because they lead most directly to LoRA.</p>
         
-        <p>It's also worth noting that PEFT methods are not only parameter-efficient but also sample-efficient, achieving strong performance with just a few thousand training examples, making them practical for low-resource settings.</p>
+        <p>It's also worth noting that PEFT methods are not only parameter-efficient but also sample-efficient, achieving strong performance with just a few thousand training examples—practical for low-resource settings.</p>
 
         <h3>Reparameterization Fine-Tuning</h3>
         <p>With trainable parameters successfully reduced by orders of magnitude, the next challenge was addressing the increased inference time.</p>
@@ -376,13 +360,12 @@
 
         <h3>Why Does Low-Rank Decomposition Work?</h3>
 
-        <p>Pretrained models have already learned rich representations from massive datasets. Fine-tuning makes targeted adjustments along a small number of key directions. Think of it like learning Portuguese when you already speak Spanish: you adjust pronunciation, some vocabulary, and certain grammatical patterns while keeping most of your language knowledge intact. Similarly, fine-tuning adjusts pretrained weights along a low-dimensional subspace rather than requiring full-rank changes across all dimensions.</p>
+        <p>Pretrained models have already learned rich representations from massive datasets. Fine-tuning doesn't relearn everything—it makes targeted adjustments along a small number of key directions. Think of it like learning Portuguese when you already speak Spanish: you adjust pronunciation, some vocabulary, and certain grammatical patterns while keeping most of your language knowledge intact. Similarly, fine-tuning adjusts pretrained weights along a low-dimensional subspace rather than requiring full-rank changes across all dimensions.</p>
 
         <figure>
             <img src="fig2.png" alt="Low-rank update intuition">
             <figcaption><strong>Figure 2:</strong> LoRA's key insight: task-specific updates require minimal parameter changes (low-rank) rather than full matrix updates. The green dot shows that small, targeted adjustments can be highly effective.</figcaption>
         </figure>
-
 
         <p>Empirically, the LoRA paper found that even r=1 or r=2 often suffice for effective adaptation on GPT-3, demonstrating that task-specific adaptation truly occupies a low-dimensional subspace.</p>
         
@@ -441,7 +424,7 @@
             <li>W<sub>O</sub> (output projection)</li>
         </ul>
 
-        <p>The original paper found that applying LoRA to just W<sub>Q</sub> and W<sub>V</sub> gives the best performance-to-parameter tradeoff. You can extend to feed-forward layers (FFN) for improved performance at the cost of more trainable parameters, shown in our experiments below.</p>
+        <p>The original paper found that applying LoRA to just W<sub>Q</sub> and W<sub>V</sub> gives the best performance-to-parameter tradeoff. You can extend to feed-forward layers (FFN) for improved performance at the cost of more trainable parameters—as shown in our experiments below.</p>
 
         <h3>The Scaling Factor</h3>
         <p>The scaling factor α/r controls the magnitude of the update. A common heuristic is to set α = 2r, which keeps the effective learning rate stable across different ranks. In our experiments, we used this approach consistently.</p>
@@ -457,17 +440,11 @@
 
         <h2 id="code">Practical Example: LoRA Fine-Tuning on IMDB</h2>
 
-        <p>To see LoRA in action, I fine-tuned DistilBERT on the IMDB sentiment classification task using HuggingFace's PEFT library.</p>
+        <p>To see LoRA in action, I fine-tuned DistilBERT on the IMDB sentiment classification task using HuggingFace's PEFT library. The full implementation is available in my <a href="https://github.com/banisafar/banisafar.github.io/blob/main/distilbert_lora_experiments.ipynb">GitHub repository</a>.</p>
 
         <h3>Setup</h3>
 
-        <p>I used the full IMDB dataset: 25,000 training examples and 25,000 test examples, balanced 50/50 between positive and negative sentiment. All experiments ran on Google Colab Pro with an NVIDIA A100 GPU. Colab link below.</p>
-
-        <div class="notebook-badges">
-            <a href="https://colab.research.google.com/github/banisafar/banisafar.github.io/blob/main/distilbert_lora_experiments.ipynb">
-                <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab">
-            </a>
-        </div>
+        <p>I used the full IMDB dataset: 25,000 training examples and 25,000 test examples, balanced 50/50 between positive and negative sentiment. All experiments ran on Google Colab Pro with an NVIDIA A100 GPU.</p>
 
         <h3>Configuration</h3>
 
@@ -595,7 +572,7 @@ model.print_trainable_parameters()
             <li><strong>Merging:</strong> After training, the LoRA matrices can be merged back into the original weights for zero-overhead inference</li>
         </ul>
 
-        <p>The full training code, including data preprocessing and evaluation, is available in the notebook linked above.</p>
+        <p>The full training code, including data preprocessing and evaluation, is available on <a href="https://github.com/banisafar/banisafar.github.io/blob/main/distilbert_lora_experiments.ipynb">GitHub</a>.</p>
 
         <h2>Conclusion</h2>
 
