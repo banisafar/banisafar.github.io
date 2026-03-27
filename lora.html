@@ -453,7 +453,7 @@
         $$W_{merged} = W_0 + \frac{\alpha}{r}BA$$
         </p>
 
-        <p>This merged weight is a standard matrix—no special inference code needed. The model has identical architecture and speed to the base model, with zero computational overhead. This is LoRA's key advantage over adapter layers.</p>
+        <p>This merged weight is the same dimension as the orignal weight matrix. Therefore, the model has identical architecture and speed to the base model, with zero computational overhead. This is LoRA's key advantage over adapter layers.</p>
 
         <h2 id="code">Practical Example: LoRA Fine-Tuning on IMDB</h2>
 
@@ -471,27 +471,27 @@
 
         <h3>Configuration</h3>
 
-        <p>Here's the core LoRA setup:</p>
+        <p>Here's the core LoRA configuration setup on DistilBERT:</p>
 
         <pre><code class="language-python">from peft import LoraConfig, get_peft_model, TaskType
 
-# Configure LoRA
-lora_config = LoraConfig(
-    task_type=TaskType.SEQ_CLS,       # Sequence classification
-    r=8,                               # Rank of decomposition
-    lora_alpha=16,                     # Scaling factor (2*r)
-    lora_dropout=0.1,                  # Regularization
-    target_modules=["q_lin", "v_lin"], # Apply to Q and V matrices
-    bias="none",
-)
+        # Configure LoRA
+        lora_config = LoraConfig(
+            task_type=TaskType.SEQ_CLS,       # Sequence classification
+            r=8,                               # Rank of decomposition
+            lora_alpha=16,                     # Scaling factor (2*r)
+            lora_dropout=0.1,                  # Regularization
+            target_modules=["q_lin", "v_lin"], # Apply to Q and V matrices
+            bias="none",
+        )
 
-# Apply LoRA to the model
-model = get_peft_model(model, lora_config)
-model.print_trainable_parameters()
-# trainable params: 739,586 || all params: 67,694,596 || trainable%: 1.10%
-</code></pre>
+        # Apply LoRA to the model
+        model = get_peft_model(model, lora_config)
+        model.print_trainable_parameters()
+        # trainable params: 739,586 || all params: 67,694,596 || trainable%: 1.10%
+        </code></pre>
 
-        <p>With just these few lines, we've converted a standard DistilBERT model (67M parameters) into one where only 740K parameters (1.10%) need to be trained.</p>
+        <p>With just these few lines, we've converted a standard DistilBERT model (67M parameters) into one where only 740K parameters (1.10%) need to be trained. Above this shows training wth a rank of 8 on the Q and V matrices.</p>
 
         <h3>Experiments</h3>
 
@@ -568,10 +568,10 @@ model.print_trainable_parameters()
         <p>Each doubling of rank provides smaller gains (~0.2% improvement), suggesting r=8 offers the best tradeoff for Q+V configurations.</p>
 
         <p><strong>Target module selection matters:</strong></p>
-        <p>With similar parameter budgets (~887K), All Attention (r=8) achieved 93.00% compared to Q+V (r=16) at 92.67%—a meaningful 0.33% improvement from adding key and output projections.</p>
+        <p>With similar parameter budgets (~887K), All Attention (r=8) achieved 93.00% compared to Q+V (r=16) at 92.67%.  A 0.33% improvement from adding key and output projections.</p>
 
         <p><strong>Feed-forward layers provide the largest boost:</strong></p>
-        <p>Extending LoRA to FFN layers (All Attention+FFN, r=8) achieved 93.32% accuracy—matching full fine-tuning's 93.26%—while training only 1.88% of parameters. This represents a 98% reduction in trainable parameters with zero accuracy loss.</p>
+        <p>Extending LoRA to FFN layers (All Attention+FFN, r=8) achieved 93.32% accuracy. This slightly outperforms full fine-tuning's 93.26% while training only 1.88% of parameters. This represents a 98% reduction in trainable parameters with zero accuracy loss.</p>
 
         <p><strong>Classification head alone is insufficient:</strong></p>
         <p>Training only the classification head (1.5K parameters) achieved just 82.18% accuracy. Even the smallest LoRA configuration (Q+V r=4) dramatically outperformed this baseline with 10% higher accuracy.</p>
