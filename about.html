@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About — Sahar Banisafar</title>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+
+      font-size: 17px;
+      line-height: 1.75;
+      color: #1a1a1a;
+      background: #fff;
+      padding: 0 1.5rem;
+    }
+
+    /* ── NAV ── */
+    nav {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem 0 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #e8e8e8;
+    }
+
+    nav a.home {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      color: #1a1a1a;
+      text-decoration: none;
+    }
+
+    nav .links {
+      display: flex;
+      gap: 1.5rem;
+    }
+
+    nav .links a {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      color: #555;
+      text-decoration: none;
+    }
+
+    nav .links a:hover { color: #1a1a1a; }
+
+    /* ── MAIN ── */
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 3.5rem 0 5rem;
+    }
+
+    /* ── IMAGE ── */
+    .hero-image {
+      width: 100%;
+      max-height: 420px;
+      object-fit: cover;
+      object-position: center;
+      display: block;
+      margin-bottom: 2.5rem;
+      filter: grayscale(20%);
+    }
+
+    .image-caption {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 12px;
+      color: #999;
+      margin-top: -2rem;
+      margin-bottom: 2.5rem;
+      text-align: right;
+    }
+
+    /* ── CONTENT ── */
+    h1 {
+      font-family: Georgia, serif;
+      font-size: 2rem;
+      font-weight: normal;
+      letter-spacing: -0.01em;
+      margin-bottom: 0.25rem;
+      line-height: 1.2;
+    }
+
+    .subtitle {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      color: #888;
+      margin-bottom: 2.5rem;
+      letter-spacing: 0.02em;
+    }
+
+    p {
+      margin-bottom: 1.4rem;
+      color: #2a2a2a;
+    }
+
+    a {
+      color: #1a1a1a;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    a:hover { color: #555; }
+
+    /* ── DIVIDER ── */
+    hr {
+      border: none;
+      border-top: 1px solid #e8e8e8;
+      margin: 2.5rem 0;
+    }
+
+    /* ── CONTACT ── */
+    .contact {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      color: #555;
+    }
+
+    .contact a {
+      color: #555;
+      font-family: inherit;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 1.5rem 0 2rem;
+      border-top: 1px solid #e8e8e8;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 12px;
+      color: #bbb;
+    }
+  </style>
+  
+</head>
+<body>
+
+  <nav>
+    <a class="home" href="https://banisafar.com/index.html">Sahar Banisafar</a>
+    <div class="links">
+      <a href="https://banisafar.com/index.html">Home</a>
+      <a href="https://banisafar.com/about.html">About</a>
+      <a href="https://banisafar.com/index.html#cv">Resume</a>
+    </div>
+  </nav>
+
+  <main>
+
+    <!-- Replace the src below with your actual Pompidou/Brancusi photo -->
+    <img
+      class="hero-image"
+      src="picasso.png"
+      alt="Brancusi retrospective, Centre Pompidou"
+    />
+    <p class="image-caption">Brancusi retrospective, Centre Pompidou, Paris</p>
+
+    <h1>Sahar Banisafar</h1>
+    <p class="subtitle">Data Scientist &amp; ML Engineer &nbsp;·&nbsp; New York</p>
+
+    <p>
+      I'm a data scientist who came up through mathematics and ended up building
+      production ML systems — real-time bidding models, audience segmentation on
+      terabytes of clickstream data, things that had to work at scale and under pressure.
+    </p>
+
+    <p>
+      For six years I worked at Omnicom's data science practice, leading modeling for
+      major pharmaceutical clients. Our RTB optimization system — models served live at
+      an endpoint, scoring bid requests under latency constraints — delivered a 34%
+      reduction in patient acquisition costs. The work was genuinely hard and unforgiving
+      of mistakes.
+    </p>
+
+    <p>
+      In 2023 I took time away from full-time work to go deeper on the things I'd been
+      wanting to learn: transformer fine-tuning, RAG architectures, LLM systems. I ran
+      systematic LoRA experiments, built a film similarity system on a 941K-film dataset,
+      and started developing <a href="https://thebalcony.app">The Balcony</a> — an NYC
+      arthouse cinema listings app. I write about what I'm building
+      <a href="https://banisafar.com">here</a>.
+    </p>
+
+    <p>
+      Outside of that: I'm a sculptor. A serious cinephile, especially Iranian cinema —
+      Kiarostami, Panahi, the generation that made films under impossible constraints and
+      somehow made them beautiful. I own the domain
+      <a href="https://computervision.art">computervision.art</a>, which tells you
+      something.
+    </p>
+
+    <p>
+      I'm drawn to work that sits at the intersection of rigor and taste. The math has
+      to be right and the thing has to be worth building.
+    </p>
+
+    <hr />
+
+    <p class="contact">
+      I'm currently open to full-time ML/DS roles and freelance consulting on RAG and
+      fine-tuning projects. &nbsp;
+      <a href="mailto:banisafar.sahar@gmail.com">Get in touch →</a>
+    </p>
+
+  </main>
+
+  <footer>© 2026 Sahar Banisafar</footer>
+
+</body>
+</html>
