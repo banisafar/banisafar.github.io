@@ -24,6 +24,26 @@
       min-height: 100vh;
     }
 
+    /* ── IMAGE ── */
+    .hero-image {
+      width: 100%;
+      max-height: 420px;
+      object-fit: cover;
+      object-position: center;
+      display: block;
+      margin-bottom: 2.5rem;
+      filter: grayscale(0%);
+    }
+
+    .image-caption {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 12px;
+      color: #999;
+      margin-top: -2rem;
+      margin-bottom: 2.5rem;
+      text-align: right;
+    }
+
     /* ── NAV ── */
     nav {
       display: flex;
@@ -47,7 +67,7 @@
       list-style: none;
     }
 
-    .nav-links a {
+    .nav-links a {-moz-force-broken-image-icon: ;
       text-decoration: none;
       color: #555;
       font-size: 0.9rem;
@@ -140,8 +160,6 @@
     <ul class="nav-links">
       <li><a href="/">Home</a></li>
       <li><a href="/about">About</a></li>
-      <li><a href="/resume">Resume</a></li>
-      <li><a href="/contact">Contact</a></li>
     </ul>
   </nav>
 
@@ -151,14 +169,22 @@
       Data Scientist &amp; ML Engineer <span>·</span> New York
     </p>
 
+    <img
+      class="hero-image"
+      src="neural_style.mp4"
+      alt="Brancusi retrospective, Centre Pompidou"
+    />
+    <p class="image-caption">Neural Style Transfer - Woman Looking into a Mirror (Brancusi) and tulips</p>
+
+    
+
     <p class="contact-text">
       Reach out to discuss consulting opportunities, collaborations, or any questions about my work in machine learning and data science.
     </p>
 
-    <a href="mailto:hello@banisafar.com" class="email-link">hello@banisafar.com</a>
+    <a href="mailto:hello@banisafar.com" class="email-link">banisafar.sahar@gmail.com</a>
 
     <div class="links-section">
-      <a href="https://banisafar.com" target="_blank">banisafar.com</a>
       <a href="https://github.com" target="_blank">GitHub</a>
       <a href="https://linkedin.com" target="_blank">LinkedIn</a>
     </div>
