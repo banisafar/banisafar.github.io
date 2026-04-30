@@ -7,42 +7,42 @@
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
         gtag('js', new Date());
-
+ 
         gtag('config', 'G-E0YWW5HB5F');
     </script>
-
+ 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="A deep dive into hybrid retrieval — combining BM25 keyword search and semantic vector search using Reciprocal Rank Fusion (RRF). Covers the mathematics, implementation in Python, and why neither approach alone is sufficient for production RAG systems.">
     <meta name="author" content="Sahar Banisafar">
-
+ 
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://banisafar.com/hybrid_search.html">
     <meta property="og:title" content="RAG Part 1: Hybrid Search">
     <meta property="og:description" content="Why neither keyword search nor vector search alone is enough — and how combining them with RRF produces better results than either.">
-
+ 
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://banisafar.com/hybrid_search.html">
     <meta property="twitter:title" content="RAG Part 1: Hybrid Search">
     <meta property="twitter:description" content="Why neither keyword search nor vector search alone is enough — and how combining them with RRF produces better results than either.">
-
+ 
     <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <title>RAG Part 1: Hybrid Search</title>
-
+ 
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-
+ 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script>hljs.highlightAll();</script>
-
+ 
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-
+ 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
             font-size: 18px;
@@ -50,13 +50,13 @@
             color: #333;
             background: #fff;
         }
-
+ 
         header {
             border-bottom: 1px solid #e0e0e0;
             padding: 20px 0;
             margin-bottom: 40px;
         }
-
+ 
         .simple-header {
             max-width: 750px;
             margin: 0 auto;
@@ -65,7 +65,7 @@
             justify-content: space-between;
             align-items: center;
         }
-
+ 
         .site-name {
             font-family: 'Libre Franklin', sans-serif;
             font-size: 20px;
@@ -73,28 +73,28 @@
             color: #333;
             text-decoration: none;
         }
-
+ 
         .site-name:hover { color: #0066cc; }
-
+ 
         header nav {
             display: flex;
             gap: 20px;
         }
-
+ 
         header nav a {
             color: #666;
             text-decoration: none;
             font-size: 16px;
         }
-
+ 
         header nav a:hover { color: #0066cc; }
-
+ 
         main {
             max-width: 750px;
             margin: 0 auto;
             padding: 0 20px 80px;
         }
-
+ 
         h1 {
             font-family: 'Libre Franklin', sans-serif;
             font-size: 2.2em;
@@ -102,13 +102,13 @@
             margin-bottom: 0.3em;
             line-height: 1.2;
         }
-
+ 
         .subtitle {
             font-style: italic;
             color: #666;
             margin-bottom: 2em;
         }
-
+ 
         h2 {
             font-family: 'Libre Franklin', sans-serif;
             font-size: 1.6em;
@@ -118,7 +118,7 @@
             padding-bottom: 0.4em;
             border-bottom: 1px solid #e0e0e0;
         }
-
+ 
         h3 {
             font-family: 'Libre Franklin', sans-serif;
             font-size: 1.3em;
@@ -126,19 +126,19 @@
             margin-top: 1.5em;
             margin-bottom: 0.6em;
         }
-
+ 
         p { margin-bottom: 1.2em; }
-
+ 
         strong { font-weight: 600; }
         em { font-style: italic; }
-
+ 
         a {
             color: #0066cc;
             text-decoration: none;
         }
-
+ 
         a:hover { text-decoration: underline; }
-
+ 
         code {
             font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
             background: #f5f5f5;
@@ -146,7 +146,7 @@
             border-radius: 3px;
             font-size: 0.9em;
         }
-
+ 
         pre {
             background: #f5f5f5;
             padding: 16px;
@@ -155,39 +155,39 @@
             margin: 1.5em 0;
             border: 1px solid #e0e0e0;
         }
-
+ 
         pre code {
             background: none;
             padding: 0;
         }
-
+ 
         ul, ol {
             margin-left: 2em;
             margin-bottom: 1.2em;
         }
-
+ 
         li { margin-bottom: 0.5em; }
-
+ 
         table {
             width: 100%;
             border-collapse: collapse;
             margin: 1.5em 0;
             font-size: 0.95em;
         }
-
+ 
         th, td {
             padding: 10px 12px;
             text-align: left;
             border: 1px solid #e0e0e0;
         }
-
+ 
         th {
             background: #f5f5f5;
             font-weight: 600;
         }
-
+ 
         tr:nth-child(even) { background: #fafafa; }
-
+ 
         .callout {
             border-left: 3px solid #e0e0e0;
             padding: 12px 20px;
@@ -196,7 +196,7 @@
             font-style: italic;
             color: #555;
         }
-
+ 
         .math-block {
             background: #f5f5f5;
             border: 1px solid #e0e0e0;
@@ -205,7 +205,7 @@
             margin: 1.5em 0;
             overflow-x: auto;
         }
-
+ 
         .math-label {
             font-size: 11px;
             text-transform: uppercase;
@@ -214,13 +214,13 @@
             margin-bottom: 8px;
             font-family: 'Consolas', monospace;
         }
-
+ 
         hr {
             border: none;
             border-top: 1px solid #e0e0e0;
             margin: 2em 0;
         }
-
+ 
         .toc {
             background: #f5f5f5;
             border: 1px solid #e0e0e0;
@@ -228,21 +228,21 @@
             padding: 20px 24px;
             margin: 2em 0;
         }
-
+ 
         .toc h2 {
             font-size: 1.2em;
             margin: 0 0 0.8em 0;
             border: none;
             padding: 0;
         }
-
+ 
         .toc ul {
             margin: 0;
             list-style-position: inside;
         }
-
+ 
         .toc li { margin-bottom: 0.4em; }
-
+ 
         .author-note {
             margin-top: 3em;
             padding-top: 2em;
@@ -250,16 +250,16 @@
             font-style: italic;
             color: #666;
         }
-
+ 
         @media (max-width: 768px) {
             body { font-size: 17px; }
-
+ 
             .simple-header {
                 flex-direction: column;
                 gap: 15px;
                 align-items: flex-start;
             }
-
+ 
             h1 { font-size: 1.8em; }
             h2 { font-size: 1.4em; }
             h3 { font-size: 1.2em; }
@@ -277,11 +277,11 @@
             </nav>
         </div>
     </header>
-
+ 
     <main>
         <h1>RAG Part 1: Hybrid Search</h1>
         <p class="subtitle">Why neither keyword search nor vector search alone is enough — and how combining them produces better results than either.</p>
-
+ 
         <div class="toc">
             <h2>Contents</h2>
             <ul>
@@ -293,45 +293,45 @@
                 <li><a href="#evaluation">Evaluating Retrieval Quality</a></li>
             </ul>
         </div>
-
+ 
         <p>Most RAG tutorials treat retrieval as a solved problem. Pick an embedding model, run a vector search, call it a day. In practice, that's rarely enough. Users don't query a knowledge base the way they write SQL — they describe what they want, use synonyms, ask vague questions. A retriever built on vector search alone will miss exact matches. One built on keyword search alone will miss meaning. Production systems use both, filtered and fused together.</p>
-
+ 
         <p>This post covers the three techniques that make up a modern retrieval pipeline: metadata filtering, BM25 keyword search, and semantic search — combined using Reciprocal Rank Fusion. For each one I'll cover the intuition, the math, and where it breaks down.</p>
-
+ 
         <hr>
-
+ 
         <h2 id="metadata">Part 1: Metadata Filtering</h2>
-
+ 
         <p>Metadata filtering is the simplest of the three techniques, and the only one that enforces hard constraints. It narrows down the candidate set using document attributes — author, date, department, access level, region — before any search happens. Think of it as a SQL WHERE clause. A paid subscriber sees different documents than a free user. An internal query returns only documents scoped to that team. Neither BM25 nor semantic search can do this — they rank by relevance, not by rules.</p>
-
+ 
         <p>Metadata filtering doesn't rank. It gates. It's always used alongside the other techniques, never alone.</p>
-
+ 
         <pre><code class="language-python"># Weaviate metadata filter example
 from weaviate.classes.query import Filter
-
+ 
 results = collection.query.fetch_objects(
     filters=Filter.by_property("department").equal("engineering")
     & Filter.by_property("access").equal("internal"),
     limit=50
 )</code></pre>
-
+ 
         <hr>
-
+ 
         <h2 id="bm25">Part 2: BM25</h2>
-
+ 
         <p>Keyword search treats both the query and each document as a bag of words — order ignored, only counts matter. These counts form a sparse vector, one slot per vocabulary word. All document vectors together make up an inverted index: given a word, instantly find every document containing it.</p>
-
+ 
         <p>The classic baseline is TF-IDF, which rewards documents that frequently contain rare keywords. BM25 (Best Match 25 — the 25th variant in a series of scoring functions, which is a very honest name) is the standard refinement. It fixes two problems with TF-IDF: raw term frequency is saturated so a word appearing 100 times doesn't score 100× better than one appearing 10, and document length penalties are diminishing rather than linear. It also adds two tunable hyperparameters to fit the scoring to your specific corpus. BM25 has been the default keyword search algorithm for decades and remains a competitive baseline worth beating before reaching for something more complex.</p>
-
+ 
         <h3>The Formula</h3>
-
+ 
         <div class="math-block">
             <div class="math-label">BM25 Scoring Function</div>
             \[
                 \text{BM25}(q, d) = \sum_{t \in q} \text{IDF}(t) \cdot \frac{f(t,d) \cdot (k_1 + 1)}{f(t,d) + k_1 \cdot \left(1 - b + b \cdot \frac{|d|}{\text{avgdl}}\right)}
             \]
         </div>
-
+ 
         <p>Breaking down each term:</p>
         <ul>
             <li><strong>f(t,d)</strong> — how many times term t appears in document d</li>
@@ -340,7 +340,7 @@ results = collection.query.fetch_objects(
             <li><strong>b</strong> — controls length normalization strength (typically 0.75)</li>
             <li><strong>IDF(t)</strong> — inverse document frequency, defined below</li>
         </ul>
-
+ 
         <div class="math-block">
             <div class="math-label">IDF Component</div>
             \[
@@ -348,22 +348,22 @@ results = collection.query.fetch_objects(
             \]
             <p style="margin-top: 10px; font-size: 14px; color: #888;">Where N is total documents and n(t) is the number containing term t. Common words like "the" appear everywhere — their IDF approaches 0.</p>
         </div>
-
+ 
         <h3>In Code</h3>
-
+ 
         <pre><code class="language-python">from rank_bm25 import BM25Okapi
-
+ 
 # Tokenize corpus
 corpus = [doc.split() for doc in documents]
 bm25 = BM25Okapi(corpus)
-
+ 
 # Query
-query = "Abbas Kiarostami slow cinema"
+query = "Wes Anderson symmetrical composition"
 scores = bm25.get_scores(query.split())
-
+ 
 # Get top-k indices
 top_indices = scores.argsort()[::-1][:10]</code></pre>
-
+ 
         <table>
             <thead>
                 <tr>
@@ -372,29 +372,29 @@ top_indices = scores.argsort()[::-1][:10]</code></pre>
                 </tr>
             </thead>
             <tbody>
-                <tr><td>Exact name lookup ("Jafar Panahi")</td><td>Synonyms ("film" vs "movie")</td></tr>
+                <tr><td>Exact name lookup ("Wes Anderson")</td><td>Synonyms ("film" vs "movie")</td></tr>
                 <tr><td>Specific technical terms</td><td>Paraphrase and vibe queries</td></tr>
                 <tr><td>User knows precise terminology</td><td>No shared vocabulary with docs</td></tr>
                 <tr><td>Short, well-defined queries</td><td>Conceptual or mood-based search</td></tr>
             </tbody>
         </table>
-
+ 
         <div class="callout">
-            BM25 has no concept of meaning — only character matching. Search for "slow contemplative cinema" and it returns nothing unless those exact words appear in a document.
+            BM25 has no concept of meaning — only character matching. Search for "whimsical comedies" and it returns nothing unless those exact words appear in a document.
         </div>
-
+ 
         <hr>
-
+ 
         <h2 id="semantic">Part 3: Semantic Search</h2>
-
-        <p>BM25's fundamental limitation is that it only matches exact words. Search for "slow contemplative cinema" and it finds nothing unless those exact words appear in a document. Semantic search fixes this by operating on meaning instead of vocabulary.</p>
-
+ 
+        <p>BM25's fundamental limitation is that it only matches exact words. Search for "whimsical comedies" and it finds nothing unless those exact words appear in a document. Semantic search fixes this by operating on meaning instead of vocabulary.</p>
+ 
         <h3>The Intuition</h3>
-
-        <p>An embedding model — a transformer encoder like <code>BAAI/bge-base-en-v1.5</code> — converts a piece of text into a dense vector: a point in 768-dimensional space. The model is trained on millions of text pairs so that semantically similar texts end up geometrically close. "A man contemplates mortality while driving through Tehran" and "a film about existential crisis in Iran" map to nearby points even though they share almost no words. One hard constraint worth noting: vectors from different embedding models are not interchangeable. Each model has its own vector space, so queries and documents must always be embedded with the same model.</p>
-
+ 
+        <p>An embedding model — a transformer encoder like <code>BAAI/bge-base-en-v1.5</code> — converts a piece of text into a dense vector: a point in 768-dimensional space. The model is trained on millions of text pairs so that semantically similar texts end up geometrically close. "Two friends drive across the country before college ends" and "a film about friendship and growing up" map to nearby points even though they share almost no words. One hard constraint worth noting: vectors from different embedding models are not interchangeable. Each model has its own vector space, so queries and documents must always be embedded with the same model.</p>
+ 
         <h3>Cosine Similarity</h3>
-
+ 
         <div class="math-block">
             <div class="math-label">Cosine Similarity</div>
             \[
@@ -402,27 +402,27 @@ top_indices = scores.argsort()[::-1][:10]</code></pre>
             \]
             <p style="margin-top: 10px; font-size: 14px; color: #888;">Where q and d are the embedding vectors for query and document. Output is in [-1, 1], where 1 means identical direction in vector space.</p>
         </div>
-
+ 
         <p>In practice, embeddings are often L2-normalized so cosine similarity reduces to a dot product: \(\mathbf{q} \cdot \mathbf{d}\). This is what makes approximate nearest neighbor search with HNSW efficient at scale.</p>
-
+ 
         <h3>In Code</h3>
-
+ 
         <pre><code class="language-python">from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
-
+ 
 model = SentenceTransformer("BAAI/bge-base-en-v1.5")
-
+ 
 # Embed corpus once and store
 doc_embeddings = model.encode(documents, show_progress_bar=True)
-
+ 
 # Embed query and retrieve
-query = "slow contemplative films about mortality"
+query = "whimsical films with quirky families"
 query_embedding = model.encode([query])
-
+ 
 similarities = cosine_similarity(query_embedding, doc_embeddings)[0]
 top_indices = np.argsort(similarities)[::-1][:10]</code></pre>
-
+ 
         <table>
             <thead>
                 <tr>
@@ -437,23 +437,23 @@ top_indices = np.argsort(similarities)[::-1][:10]</code></pre>
                 <tr><td>Conceptual similarity</td><td>Out-of-domain vocabulary</td></tr>
             </tbody>
         </table>
-
+ 
         <div class="callout">
-            Semantic search has no concept of exact matching. Search for "Jafar Panahi" and you might get films thematically similar to his work — but miss films that simply mention his name in passing.
+            Semantic search has no concept of exact matching. Search for "Wes Anderson" and you might get films thematically similar to his work — but miss films that simply mention his name in passing.
         </div>
-
+ 
         <hr>
-
+ 
         <h2 id="rrf">Part 4: Reciprocal Rank Fusion</h2>
-
+ 
         <p>BM25 and semantic search each return a ranked list of documents. The problem is these lists are scored on completely different scales — BM25 produces unbounded term frequency scores, cosine similarity is bounded in [-1, 1]. You can't just add them together. Normalizing doesn't really work either because the score distributions are different shapes. RRF sidesteps this entirely by ignoring scores and only using rank positions.</p>
-
+ 
         <h3>The Intuition</h3>
-
+ 
         <p>A document that ranks highly on both lists is probably genuinely relevant. A document that only appears on one list, or ranks low on both, probably isn't. RRF scores each document based on where it appears in each list — specifically, the reciprocal of its rank — and sums those scores across all lists. The result is a single merged ranking that reflects consensus across retrieval methods.</p>
-
+ 
         <h3>The Formula</h3>
-
+ 
         <div class="math-block">
             <div class="math-label">Reciprocal Rank Fusion</div>
             \[
@@ -461,11 +461,11 @@ top_indices = np.argsort(similarities)[::-1][:10]</code></pre>
             \]
             <p style="margin-top: 10px; font-size: 14px; color: #888;">Where R is the set of ranked lists, rank_r(d) is document d's position in list r, and k is a constant (typically 60) that dampens the influence of top-ranked documents.</p>
         </div>
-
+ 
         <p>The constant <code>k=60</code> was found empirically in the original RRF paper to work well across a range of tasks. It prevents a document ranked #1 in one list from completely dominating the fusion result. When k=0, the top-ranked document in any list dominates — rank 1 scores 1.0, rank 10 scores 0.1, a 10× gap. Setting k=60 compresses this: rank 1 scores 1/61, rank 10 scores 1/70, a much more modest difference.</p>
-
+ 
         <h3>In Code</h3>
-
+ 
         <pre><code class="language-python">def reciprocal_rank_fusion(bm25_results, semantic_results, k=60):
     """
     bm25_results: list of doc ids ordered by BM25 rank
@@ -473,60 +473,60 @@ top_indices = np.argsort(similarities)[::-1][:10]</code></pre>
     returns: list of (doc_id, score) sorted by RRF score
     """
     scores = {}
-
+ 
     for rank, doc_id in enumerate(bm25_results):
         scores[doc_id] = scores.get(doc_id, 0) + 1 / (k + rank + 1)
-
+ 
     for rank, doc_id in enumerate(semantic_results):
         scores[doc_id] = scores.get(doc_id, 0) + 1 / (k + rank + 1)
-
+ 
     return sorted(scores.items(), key=lambda x: x[1], reverse=True)
-
-
+ 
+ 
 def hybrid_search(query, documents, bm25, model, doc_embeddings, top_k=10):
     # BM25 retrieval
     bm25_scores = bm25.get_scores(query.split())
     bm25_ranked = bm25_scores.argsort()[::-1][:100]
-
+ 
     # Semantic retrieval
     query_emb = model.encode([query])
     sem_scores = cosine_similarity(query_emb, doc_embeddings)[0]
     sem_ranked = sem_scores.argsort()[::-1][:100]
-
+ 
     # Fuse with RRF
     fused = reciprocal_rank_fusion(bm25_ranked, sem_ranked)
     return [idx for idx, _ in fused[:top_k]]</code></pre>
-
+ 
         <h3>In Weaviate</h3>
-
+ 
         <p>Most vector databases implement hybrid search natively. Weaviate wraps BM25, semantic search, and RRF into a single call with an <code>alpha</code> parameter to control the balance:</p>
-
+ 
         <pre><code class="language-python">results = collection.query.hybrid(
-    query="slow contemplative films about mortality",
+    query="whimsical films with quirky families",
     alpha=0.5,  # 0 = pure BM25, 1 = pure semantic
     limit=10
 )</code></pre>
-
+ 
         <div class="callout">
             RRF rewards consistency across retrieval methods. A document that both BM25 and semantic search agree on is more likely to be genuinely relevant than one that only one method surfaces.
         </div>
-
+ 
         <hr>
-
+ 
         <h2 id="together">Putting It Together</h2>
-
+ 
         <p>Each technique covers a different failure mode. BM25 handles exact matches — names, product codes, technical terms — that semantic search would miss or dilute. Semantic search handles meaning, synonyms, and conceptual queries that BM25 can't touch. Metadata filtering enforces hard constraints that neither search method can express. RRF merges the ranked outputs without requiring you to normalize incompatible score distributions.</p>
-
+ 
         <p>Hybrid search with RRF is the right default not because it's always optimal, but because it fails gracefully. Keyword-heavy query? BM25 carries it. Conceptual query? Semantic search carries it. Both agree? High confidence. The <code>alpha</code> parameter in Weaviate (0 = pure BM25, 1 = pure semantic) lets you tune this balance once you've measured what your query distribution actually looks like.</p>
-
+ 
         <hr>
-
+ 
         <h2 id="evaluation">Evaluating Retrieval Quality</h2>
-
+ 
         <p>Tuning a retriever without measurement is guesswork. The standard metrics all require the same ingredients: a set of test queries, the ranked list your retriever returns for each, and a ground truth list of every relevant document in the knowledge base. Building that ground truth is tedious, but without it you have no way to know whether your changes are improvements.</p>
-
+ 
         <h3>Precision and Recall</h3>
-
+ 
         <div class="math-block">
             <div class="math-label">Precision and Recall</div>
             \[
@@ -536,13 +536,13 @@ def hybrid_search(query, documents, bm25, model, doc_embeddings, top_k=10):
                 \text{Recall@K} = \frac{\text{relevant documents in top K}}{\text{total relevant documents}}
             \]
         </div>
-
+ 
         <p>Suppose your knowledge base has 10 relevant documents for a query. Your retriever returns 12, of which 8 are relevant: precision = 8/12 = 67%, recall = 8/10 = 80%. Loosen the retriever to return 15, finding 9 relevant: precision drops to 60%, recall rises to 90%. There's almost always a tradeoff.</p>
-
+ 
         <p><strong>Precision</strong> measures how much you can trust the results. <strong>Recall</strong> measures how complete they are.</p>
-
+ 
         <h3>Mean Reciprocal Rank (MRR)</h3>
-
+ 
         <div class="math-block">
             <div class="math-label">Mean Reciprocal Rank</div>
             \[
@@ -550,11 +550,11 @@ def hybrid_search(query, documents, bm25, model, doc_embeddings, top_k=10):
             \]
             <p style="margin-top: 10px; font-size: 14px; color: #888;">Where rank_i is the position of the first relevant document for query i. MRR measures how quickly the retriever surfaces at least one relevant result.</p>
         </div>
-
+ 
         <p>MRR is useful when what matters most is whether the retriever surfaces at least one relevant result near the top. If the first relevant document appears at ranks 1, 3, 6, and 2 across four queries: MRR = (1 + 1/3 + 1/6 + 1/2) / 4 = 0.50.</p>
-
+ 
         <h3>Which to Use</h3>
-
+ 
         <table>
             <thead>
                 <tr><th>Metric</th><th>Best for</th></tr>
@@ -565,17 +565,18 @@ def hybrid_search(query, documents, bm25, model, doc_embeddings, top_k=10):
                 <tr><td>MRR</td><td>Is at least one relevant doc near the top?</td></tr>
             </tbody>
         </table>
-
+ 
         <p>Recall is the most fundamental — it captures whether the retriever is doing its job at all. Precision tells you how much noise it's adding. MRR tells you whether relevant results are appearing near the top. Use all three together when tuning, and build the ground truth dataset early. It's the only way to know if a change to your retriever is actually an improvement.</p>
-
+ 
         <hr>
-
+ 
         <h2>References</h2>
         <p>Robertson, S., & Zaragoza, H. (2009). The probabilistic relevance framework: BM25 and beyond. <em>Foundations and Trends in Information Retrieval</em>, 3(4), 333–389.</p>
         <p>Cormack, G. V., Clarke, C. L. A., & Buettcher, S. (2009). Reciprocal rank fusion outperforms Condorcet and individual rank learning methods. <em>SIGIR 2009</em>.</p>
         <p>Reimers, N., & Gurevych, I. (2019). Sentence-BERT: Sentence embeddings using siamese BERT-networks. <em>EMNLP 2019</em>.</p>
-
+ 
         <p class="author-note">Sahar Banisafar is a data scientist with a mathematics background and 6 years of production ML experience. She writes about the intersection of theory and practice in modern machine learning.</p>
     </main>
 </body>
 </html>
+ 
